@@ -122,11 +122,17 @@ export default function CheckIn() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (loading) return; // ✅ Prevent API spamming during demo
+    if (loading) return; 
     if (!text.trim()) return;
 
     const userMsg = { id: Date.now().toString(), sender: 'user', text: text.trim() };
-    setMessages(prev => [...prev, userMsg]);
+    const botMsgId = Date.now().toString() + 'bot';
+    
+    // Add user msg and an empty bot bubble placeholder instantly
+    setMessages(prev => [...prev, userMsg, { 
+      id: botMsgId, sender: 'bot', text: '', riskLevel: null, intent: null 
+    }]);
+    
     setText('');
     setLoading(true);
 
@@ -136,32 +142,64 @@ export default function CheckIn() {
     }
 
     try {
-      const res = await axios.post(`${API_BASE}/api/v1/checkin/submit`, {
-        userId: currentUser?.uid || null,
-        email: currentUser?.email || null,
-        isAnonymous: currentUser?.isAnonymous || false,
-        text: userMsg.text
+      const response = await fetch(`${API_BASE}/api/v1/checkin/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify({
+          userId: currentUser?.uid || null,
+          email: currentUser?.email || null,
+          isAnonymous: currentUser?.isAnonymous || false,
+          text: userMsg.text
+        })
       });
 
-      const data = res.data.data;
-      const botMsg = {
-        id: Date.now().toString() + 'bot',
-        sender: 'bot',
-        text: data.aiResponse,
-        riskLevel: data.riskLevel,
-        intent: data.intent,
-        copingStrategy: data.copingStrategy,
-        empathyEcho: data.empathyEcho
-      };
-      setMessages(prev => [...prev, botMsg]);
-    } catch (error) {
-      console.error('Message failed', error);
-      // ✅ 4. Add Backup Response (VERY IMPORTANT FOR DEMO)
-      if (error.response?.status === 429) {
-        setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'bot', text: "I'm a bit busy right now, but I understand you're going through something. Tell me more, I'm listening 💙" }]);
-      } else {
-        setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'bot', text: 'Sorry, I am having trouble connecting to the server. Please try again in a moment.' }]);
+      if (!response.ok) throw new Error('Server limit reached');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamBuffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        setLoading(false); // Stop loading pulse instantly on first byte
+        
+        if (done) break;
+        
+        streamBuffer += decoder.decode(value, { stream: true });
+        let newlines = streamBuffer.split('\n\n');
+        
+        for (let i = 0; i < newlines.length - 1; i++) {
+          const chunkStr = newlines[i].replace('data: ', '').trim();
+          if (!chunkStr) continue;
+          
+          try {
+            const parsed = JSON.parse(chunkStr);
+            if (parsed.text) {
+                setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, text: m.text + parsed.text } : m));
+            }
+            if (parsed.done) {
+                setMessages(prev => prev.map(m => m.id === botMsgId ? {
+                    ...m, 
+                    riskLevel: parsed.riskLevel,
+                    intent: parsed.intent,
+                    copingStrategy: parsed.copingStrategy,
+                    empathyEcho: parsed.empathyEcho
+                } : m));
+            }
+          } catch(e) {}
+        }
+        streamBuffer = newlines[newlines.length - 1]; 
       }
+    } catch (error) {
+      console.error('Stream failed', error);
+      setMessages(prev => prev.map(m => m.id === botMsgId ? {
+          ...m, 
+          text: "I'm a bit overwhelmed with traffic right now, but I hear you. Tell me more 💙",
+          riskLevel: "Amber"
+      } : m));
     } finally {
       setLoading(false);
     }

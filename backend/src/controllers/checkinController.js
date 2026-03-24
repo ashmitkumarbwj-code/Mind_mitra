@@ -1,4 +1,4 @@
-import { generateDeepChatResponse } from '../services/aiService.js';
+import { generateDeepChatStream } from '../services/aiService.js';
 import { evaluateRisk, getCopingStrategy } from '../services/riskEngine.js';
 import { saveCheckIn, getRecentCheckIns, upsertUser, updateEmergencyContact, saveCopingLog, saveAlert } from '../services/dbService.js';
 
@@ -37,16 +37,22 @@ export const submitCheckIn = async (req, res) => {
             return res.status(400).json({ error: 'Check-in text is required' });
         }
 
-        // Generate a secure fallback ID for completely anonymous, unauthenticated attempts
+        // Setup SSE Headers for Real-Time Streaming
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        // Let React know immediately a stream is active
+        res.flushHeaders(); 
+
         const safeUserId = userId || `anon-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-        // Upsert User to ensure record exists
+        // Upsert User to ensure record exists (Fire and Forget)
         if (safeUserId) {
-            await upsertUser({ uid: safeUserId, email: email || null, isAnonymous: isAnonymous || false });
+            upsertUser({ uid: safeUserId, email: email || null, isAnonymous: isAnonymous || false }).catch(()=>{});
         }
 
-        // 1. Core Chatbot Logic & Risk Assessment (Deep LLM Thought Process)
-        const aiPayload = await generateDeepChatResponse(text);
+        // 1. Core Chatbot Logic & Risk Assessment (SSE Streamed directly to 'res')
+        const aiPayload = await generateDeepChatStream(text, res);
         
         const riskLevelUI = aiPayload.riskLevel; // "Green", "Amber", "Red"
         const finalReply = aiPayload.reply;
@@ -56,16 +62,15 @@ export const submitCheckIn = async (req, res) => {
         const fallbackSentiment = riskLevelUI === "Amber" ? -1 : (riskLevelUI === "Red" ? -2 : 1);
         const copingStrategy = getCopingStrategy(fallbackIntent);
 
-        // 3. Return exactly what CheckIn.jsx expects IMMEDIATELY
-        res.status(201).json({
-            message: 'Check-in processed successfully',
-            data: {
-                aiResponse: finalReply,
-                riskLevel: riskLevelUI,
-                intent: fallbackIntent,
-                copingStrategy
-            }
-        });
+        // 3. Finalize Stream with UI Action Metadata
+        res.write(`data: ${JSON.stringify({
+            done: true,
+            riskLevel: riskLevelUI,
+            intent: fallbackIntent,
+            copingStrategy,
+            empathyEcho: aiPayload.empathyEcho
+        })}\n\n`);
+        res.end();
 
         // 4. DB Storage (Fire and Forget - Non-Blocking)
         try {
@@ -79,32 +84,21 @@ export const submitCheckIn = async (req, res) => {
                 risk_level: riskLevelUI,
                 ai_response: finalReply
             };
-            // 5. Immediate Crisis Escalation (New Phase 2 Alert)
             if (riskLevelUI === 'Red') {
                 saveAlert(safeUserId, 'RISK_RED', `High-risk detected for user: ${text}`).catch(err => {
                     console.error('Failed to log crisis alert:', err);
                 });
-                console.log(`[ALERT] High-risk incident logged for counselor review.`);
             }
-
             saveCheckIn(checkinRecord).catch(dbError => {
                 console.warn('Non-fatal: Database pool full. Chatbot history not saved securely.');
             });
-        } catch (dbError) {
-            console.warn('Non-fatal: Database save sequence failed.');
-        }
+        } catch (dbError) {}
 
     } catch (error) {
         console.error('Critical Error in submitCheckIn:', error);
-        // Guarantee the UI never stalls completely by providing a safe fallback payload even on catastrophic failure
-        res.status(201).json({ 
-            data: { 
-                aiResponse: "I'm experiencing a high volume of traffic right now and my connection is a bit slow. Please wait a moment and try again. Remember, if you are in immediate distress, please call iCall at 9152987821.", 
-                riskLevel: "Amber", 
-                intent: "stress", 
-                copingStrategy: "Take a deep breath. Close your eyes for 30 seconds." 
-            } 
-        });
+        res.write(`data: ${JSON.stringify({ text: "I'm experiencing a high volume of traffic right now and my connection is a bit slow. Please wait a moment and try again." })}\n\n`);
+        res.write(`data: ${JSON.stringify({ done: true, riskLevel: "Amber", intent: "stress", copingStrategy: "Take a deep breath. Close your eyes for 30 seconds." })}\n\n`);
+        res.end();
     }
 };
 
