@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import axios from 'axios';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, AlertCircle, ShieldAlert, HeartPulse } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+
+const LazyDashboardChart = lazy(() => import('../components/DashboardChart'));
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -15,7 +16,7 @@ export default function Dashboard() {
     if (!currentUser) return;
     const fetchDashboard = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/v1/dashboard/user?userId=${currentUser.uid}`);
+        const res = await axios.get(`http://localhost:5000/api/v1/dashboard/user?userId=${currentUser.uid}&_t=${Date.now()}`);
         setData(res.data.data);
       } catch (error) {
         console.error('Failed to fetch dashboard data', error);
@@ -66,32 +67,40 @@ export default function Dashboard() {
           <div className="text-gradient" style={{ fontSize: '1.8rem', fontWeight: 700 }}>{data.topIntent}</div>
         </div>
         <div className="glass-panel animate-slide-up" style={{ padding: '24px', animationDelay: '0.2s' }}>
-          <p style={{ color: '#64748b', marginTop: 0, marginBottom: '8px', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Recent Check-ins</p>
-          <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{data.trends?.length} <span style={{ fontSize: '1rem', color: '#64748b' }}>entries</span></div>
+          <p style={{ color: '#64748b', marginTop: 0, marginBottom: '8px', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Activities Completed</p>
+          <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{data.activitiesCompleted} <span style={{ fontSize: '1rem', color: '#64748b' }}>steps</span></div>
         </div>
         <div className="glass-panel animate-slide-up" style={{ padding: '24px', animationDelay: '0.3s' }}>
-          <p style={{ color: '#64748b', marginTop: 0, marginBottom: '8px', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Current Risk</p>
-          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: riskColor }}>{data.currentRiskStatus}</div>
+          <p style={{ color: '#64748b', marginTop: 0, marginBottom: '8px', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Burnout Level</p>
+          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: data.burnoutScore > 50 ? '#fbbf24' : '#818cf8' }}>{data.burnoutScore}%</div>
         </div>
       </div>
+
+      {/* Alerts Section (if any) */}
+      {data.alerts && data.alerts.length > 0 && (
+        <div className="glass-panel animate-slide-up" style={{ padding: '24px', marginBottom: '28px', border: '1px solid rgba(248, 113, 113, 0.2)', background: 'rgba(248, 113, 113, 0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <ShieldAlert size={20} color="#f87171" />
+            <h3 style={{ margin: 0, color: '#f87171' }}>Recent Security & Welfare Alerts</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {data.alerts.map(alert => (
+              <div key={alert.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', fontSize: '0.9rem' }}>
+                <span style={{ color: '#cbd5e1' }}>{alert.message}</span>
+                <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{new Date(alert.created_at).toLocaleTimeString()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Mood Chart */}
       <div className="glass-panel animate-slide-up" style={{ padding: '30px', animationDelay: '0.4s' }}>
         <h2 style={{ marginTop: 0, marginBottom: '30px' }}>Mood Trend (Last 7 Days)</h2>
         <div style={{ height: '300px' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data.trends}>
-              <XAxis dataKey="date" stroke="#475569" tick={{ fontSize: 12 }} tickFormatter={(val) => typeof val === 'string' ? val.substring(0, 3) : val} />
-              <YAxis stroke="#475569" domain={[-1, 1]} tick={{ fontSize: 12 }} tickFormatter={(v) => v.toFixed(1)} />
-              <Tooltip
-                contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                itemStyle={{ color: '#818cf8' }}
-                formatter={(v) => [v.toFixed(2), 'Mood Score']}
-              />
-              <Line type="monotone" dataKey="score" stroke="#818cf8" strokeWidth={3}
-                dot={{ fill: '#818cf8', r: 5 }} activeDot={{ r: 8, fill: '#c084fc' }} />
-            </LineChart>
-          </ResponsiveContainer>
+          <Suspense fallback={<div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b'}}>Loading chart...</div>}>
+            <LazyDashboardChart data={data.trends} />
+          </Suspense>
         </div>
       </div>
     </div>

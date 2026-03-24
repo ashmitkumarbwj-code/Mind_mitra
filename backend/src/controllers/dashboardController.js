@@ -1,32 +1,32 @@
-import { getRecentCheckIns } from '../services/dbService.js';
+import { getRecentCheckIns, getCopingCount, getUserById, getRecentAlerts } from '../services/dbService.js';
 
 export const getUserDashboard = async (req, res) => {
     try {
         const userId = req.query.userId || 'anonymous';
         const checkins = await getRecentCheckIns(userId);
+        const activitiesCount = await getCopingCount(userId);
+        const user = await getUserById(userId);
+        const alerts = await getRecentAlerts(userId);
         
         // Aggregate Data for UI metrics
-        // (If DB fails, we return mock default stats)
         let trends = checkins.map(c => ({
             date: c.created_at || new Date().toISOString(),
             score: c.sentiment_score
-        })).reverse(); // Oldest to newest for plotting
-        
-        // Mock fallback if empty for prototype visual setup
-        if (trends.length === 0) {
-            trends = [
-                { date: 'Mon', score: 0.1 },
-                { date: 'Tue', score: 0.4 },
-                { date: 'Wed', score: -0.2 },
-                { date: 'Thu', score: 0.5 },
-                { date: 'Fri', score: 0.8 }
-            ];
-        }
+        })).reverse();
 
+        // Calculate Burnout score (Amber frequency)
+        const amberCount = checkins.filter(c => c.risk_level === 'Amber').length;
+        const totalRecent = checkins.length || 1;
+        const burnoutScore = Math.min(100, Math.round((amberCount / totalRecent) * 100));
+        
         const stats = {
             trends,
-            topIntent: 'Stress', // Mock aggregation
-            currentRiskStatus: checkins[0]?.risk_level || 'Green'
+            topIntent: checkins[0]?.intent || 'Calm',
+            currentRiskStatus: checkins[0]?.risk_level || 'Green',
+            activitiesCompleted: activitiesCount,
+            burnoutScore: burnoutScore,
+            alerts: alerts,
+            user: user
         };
 
         res.status(200).json({ data: stats });

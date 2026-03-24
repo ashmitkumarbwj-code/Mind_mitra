@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
-  signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
@@ -66,13 +65,6 @@ export const AuthProvider = ({ children }) => {
     return result.user;
   };
 
-  const loginAnonymously = async () => {
-    setError('');
-    const result = await signInAnonymously(auth);
-    await saveUserProfile(result.user);
-    return result.user;
-  };
-
   const logout = async () => {
     await signOut(auth);
   };
@@ -96,7 +88,6 @@ export const AuthProvider = ({ children }) => {
     loginWithEmail,
     registerWithEmail,
     loginWithGoogle,
-    loginAnonymously,
     logout
   };
 

@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import CheckIn from './pages/CheckIn';
 import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
+import Settings from './pages/Settings';
 
 // Guard: redirect unauthenticated users back to onboarding
 function PrivateRoute({ children }) {
@@ -24,6 +25,7 @@ function AppRoutes() {
           <Route path="/" element={<Onboarding />} />
           <Route path="/checkin" element={<PrivateRoute><CheckIn /></PrivateRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -32,6 +34,18 @@ function AppRoutes() {
 }
 
 function App() {
+  React.useEffect(() => {
+    const handleMouseMove = (e) => {
+      const x = (e.clientX / window.innerWidth) * 100;
+      const y = (e.clientY / window.innerHeight) * 100;
+      document.documentElement.style.setProperty('--mouse-x', `${x}%`);
+      document.documentElement.style.setProperty('--mouse-y', `${y}%`);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   return (
     <Router>
       <AuthProvider>

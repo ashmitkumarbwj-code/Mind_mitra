@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import checkinRoutes from './src/routes/checkinRoutes.js';
 import dashboardRoutes from './src/routes/dashboardRoutes.js';
+import { initCronJobs } from './src/services/cronService.js';
 
 dotenv.config();
 
@@ -15,10 +16,20 @@ app.use(express.json());
 app.use('/api/v1/checkin', checkinRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 
+app.get('/', (req, res) => {
+  res.redirect('http://localhost:5173/');
+});
+
+// Silence Chrome DevTools internal probe
+app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
+  res.status(200).json({});
+});
+
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Mental Health Check-In API is running' });
 });
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  initCronJobs();
 });

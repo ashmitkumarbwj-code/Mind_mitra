@@ -21,67 +21,49 @@ export const evaluateRisk = (currentCheckin, pastSevenDays) => {
         return "Red";
     }
 
-    // ─── LAYER 2: Build weighted risk score ─────────────────────────────────
-    let score = 0;
+    // ─── LAYER 2: Build weighted risk score (Lower is worse) ─────────────────
+    let score = sentimentScore; // Base is -2 to +2
 
-    // Sentiment weight (normalised: -2 to +2 → contribution to score)
-    score += sentimentScore; // e.g. -1 adds -1 to score
-
-    // Keyword weight
-    if (mediumRiskKeywords && mediumRiskKeywords.length > 0) {
-        score -= 1; // each medium keyword block adds -1 penalty
+    // Intent specific modifiers
+    const intentWeights = { burnout: -1.5, anxiety: -1.0, stress: -0.5, anger: -1.0, sadness: -1.0 };
+    if (intentWeights[primaryIntent]) {
+        score += intentWeights[primaryIntent];
     }
 
-    // Intent weight
-    if (HIGH_RISK_INTENTS.has(primaryIntent)) {
-        score -= 1;
-    } else if (MEDIUM_RISK_INTENTS.has(primaryIntent)) {
-        score -= 0.5;
+    // Medium risk modifiers
+    if (mediumRiskKeywords && mediumRiskKeywords.length > 0) {
+        score -= 0.5 * mediumRiskKeywords.length;
     }
 
     // ─── LAYER 3: Historical trend ─────────────────────────────────────────
-    let trendScore = 0;
+    let consecutiveNegative = 0;
+    
     if (pastSevenDays && pastSevenDays.length > 0) {
-        let consecutiveNegative = 0;
-        let maxConsecutive = 0;
-        
-        // Count consecutive negative days (oldest to newest)
-        const sorted = [...pastSevenDays].reverse();
-        for (const c of sorted) {
-            const s = c.sentiment_score ?? 0;
-            if (s < 0) {
-                consecutiveNegative++;
-                maxConsecutive = Math.max(maxConsecutive, consecutiveNegative);
-            } else {
-                consecutiveNegative = 0;
-            }
+        // Find consecutive negative days recently
+        for (const c of pastSevenDays) {
+            if ((c.sentiment_score ?? 0) < 0) consecutiveNegative++;
+            else break;
         }
 
-        if (maxConsecutive >= 5) {
-            trendScore = -2; // RED escalation
-        } else if (maxConsecutive >= 3) {
-            trendScore = -1; // AMBER escalation
-        }
+        if (consecutiveNegative >= 5) score -= 2.0;
+        else if (consecutiveNegative >= 3) score -= 1.0;
 
-        // Sudden drop: check if last recorded score was positive but current is very negative
+        // Sudden drop check
         const lastEntry = pastSevenDays[0];
-        if (lastEntry && (lastEntry.sentiment_score >= 1) && sentimentScore <= -2) {
-            trendScore = Math.min(trendScore, -2); // force RED on sudden crash
+        if (lastEntry && (lastEntry.sentiment_score >= 0.5) && sentimentScore <= -1.5) {
+            score -= 1.5; // Shock/Crash
         }
-
-        score += trendScore;
-        console.log('Trend score:', trendScore, '| Max consecutive negative days:', maxConsecutive);
     }
 
-    // ─── LAYER 4: Final mapping ───────────────────────────────────────────
-    let riskLevel;
-    if (score <= -2) {
+    // ─── LAYER 4: Final thresholding ──────────────────────────────────────────
+    let riskLevel = "Green";
+    if (score <= -3.0) {
         riskLevel = "Red";
-    } else if (score < 0) {
+    } else if (score <= -0.5) {
         riskLevel = "Amber";
-    } else {
-        riskLevel = "Green";
     }
+
+    console.log('Final risk score:', score.toFixed(2), '→ RISK DECISION:', riskLevel);
 
     console.log('Final weighted score:', score.toFixed(2), '→ RISK DECISION:', riskLevel);
     console.log('-------------------');
