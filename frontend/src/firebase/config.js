@@ -1,25 +1,20 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getAnalytics } from 'firebase/analytics';
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBUQZRRXyHjYA3ex-OEzdugGzcgn4QR1RA",
-  authDomain: "mind-mitra-78dbc.firebaseapp.com",
-  projectId: "mind-mitra-78dbc",
-  storageBucket: "mind-mitra-78dbc.firebasestorage.app",
-  messagingSenderId: "473717376171",
-  appId: "1:473717376171:web:123cb38f6f8b8b0e8be3ee",
-  measurementId: "G-CS2CDR3BPM"
+  apiKey: "AIzaSyCIiG2z0N-_Mp_K82kO45ljDkWKWLfTS6M",
+  authDomain: "mind-mitra-62dda.firebaseapp.com",
+  projectId: "mind-mitra-62dda",
+  storageBucket: "mind-mitra-62dda.firebasestorage.app",
+  messagingSenderId: "783543989393",
+  appId: "1:783543989393:web:76a68ab94f8500398a3b30",
+  measurementId: "G-WR6R97C338"
 };
 
 const app = initializeApp(firebaseConfig);
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+const analytics = getAnalytics(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
-
-export default app;
+export { auth, googleProvider, signInWithPopup, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail };

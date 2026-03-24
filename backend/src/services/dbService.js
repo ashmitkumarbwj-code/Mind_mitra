@@ -1,3 +1,7 @@
+// Force IPv4 DNS resolution — fixes ETIMEDOUT on networks that block IPv6 (e.g. local dev)
+import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
