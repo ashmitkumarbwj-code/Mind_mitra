@@ -8,21 +8,21 @@ export const getUserDashboard = async (req, res) => {
         const user = await getUserById(userId);
         const alerts = await getRecentAlerts(userId);
         
-        // Aggregate Data for UI metrics
+        // MongoDB returns camelCase fields (createdAt, sentimentScore, riskLevel)
         let trends = checkins.map(c => ({
-            date: c.created_at || new Date().toISOString(),
-            score: c.sentiment_score
+            date: c.createdAt || new Date().toISOString(),
+            score: c.sentimentScore
         })).reverse();
 
         // Calculate Burnout score (Amber frequency)
-        const amberCount = checkins.filter(c => c.risk_level === 'Amber').length;
+        const amberCount = checkins.filter(c => c.riskLevel === 'Amber').length;
         const totalRecent = checkins.length || 1;
         const burnoutScore = Math.min(100, Math.round((amberCount / totalRecent) * 100));
         
         const stats = {
             trends,
             topIntent: checkins[0]?.intent || 'Calm',
-            currentRiskStatus: checkins[0]?.risk_level || 'Green',
+            currentRiskStatus: checkins[0]?.riskLevel || 'Green',
             activitiesCompleted: activitiesCount,
             burnoutScore: burnoutScore,
             alerts: alerts,
