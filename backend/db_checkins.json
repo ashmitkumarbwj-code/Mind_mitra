@@ -1,0 +1,85 @@
+[
+  {
+    "_id": "69c2ca3ed463d4000f59bad4",
+    "userId": "pl1S6fWZivaEQufUt9wlWAl5zwz1",
+    "feeling": "suicidal thoughts\n",
+    "timestamp": "2026-03-24T17:30:38.487Z",
+    "analysis": {
+      "sentiment": "red",
+      "copingStrategies": [
+        "Try a grounding exercise: look around and name 5 things you can see, 4 things you can touch, 3 things you can hear, 2 things you can smell, and 1 thing you can taste.",
+        "Focus on your breath: inhale slowly for 4 counts, hold for 4 counts, and exhale slowly for 4 counts. Repeat this 'box breathing' several times.",
+        "Remind yourself that thoughts are not commands. You don't have to act on every thought you have."
+      ],
+      "highRiskDetected": true,
+      "counselorMessage": "Your safety is the most important thing right now. Please reach out for immediate professional help. You can connect with compassionate support by calling or texting 988 anytime in the US and Canada, or calling 111 in the UK. You are not alone, and help is available."
+    }
+  },
+  {
+    "_id": "69c2c5937bab064d5eb507b0",
+    "userId": "pl1S6fWZivaEQufUt9wlWAl5zwz1",
+    "feeling": "i am feeling depressed\n",
+    "timestamp": "2026-03-24T17:10:43.764Z",
+    "analysis": {
+      "sentiment": "red",
+      "copingStrategies": [
+        "Try a 4-7-8 breathing exercise: Inhale gently through your nose for 4 counts, hold your breath for 7 counts, and exhale completely through your mouth for 8 counts. Repeat this a few times to help calm your nervous system.",
+        "Engage in a gentle, enjoyable activity if you can, such as listening to calming music, looking at nature, or reading a light book.",
+        "Practice the '5-4-3-2-1 grounding technique': Name 5 things you can see, 4 things you can touch, 3 things you can hear, 2 things you can smell, and 1 thing you can taste. This can help bring you back to the present moment.",
+        "If you feel able, reach out to a trusted friend or family member to share how you're feeling, or simply for a distraction."
+      ],
+      "highRiskDetected": true,
+      "counselorMessage": "It sounds like you're going through a really tough time right now, and it's brave of you to share that. Given these persistent feelings of depression, connecting with a professional counselor or a helpline could provide you with additional support and tools. Please consider reaching out to a mental health professional who can offer a safe space to explore what you're experiencing."
+    }
+  },
+  {
+    "_id": "69c2c4417e64261c2e61a968",
+    "userId": "dVniHpvFwCYtzDpsbw4TCDeHJCN2",
+    "feeling": "today i am feeling very sad\n",
+    "timestamp": "2026-03-24T17:05:05.014Z",
+    "analysis": {
+      "sentiment": "amber",
+      "copingStrategies": [
+        "Acknowledge your sadness without judgment. It's okay to feel this way.",
+        "Practice a calming breathing exercise. Try '4-7-8 breathing': inhale deeply through your nose for 4 counts, hold your breath for 7 counts, and exhale slowly through your mouth for 8 counts. Repeat 3-4 times.",
+        "Engage in a gentle activity that usually brings you comfort, even if just for a few minutes. This could be listening to calming music, looking at nature, or cuddling a pet.",
+        "Consider journaling about what you're feeling. Sometimes putting words to emotions can help process them."
+      ],
+      "highRiskDetected": false,
+      "counselorMessage": null
+    }
+  },
+  {
+    "_id": "69c2c0a6512de94b0ee25d61",
+    "userId": "pl1S6fWZivaEQufUt9wlWAl5zwz1",
+    "feeling": "i am feeling well\n",
+    "timestamp": "2026-03-24T16:49:42.199Z",
+    "analysis": {
+      "sentiment": "green",
+      "copingStrategies": [
+        "Take a moment to acknowledge what's making you feel well today.",
+        "Practice gratitude: list three things you're thankful for right now.",
+        "Try a minute of 'belly breathing': Place one hand on your chest and one on your belly. Breathe deeply through your nose, feeling your belly rise, then exhale slowly through pursed lips. Repeat 5-10 times to maintain a sense of calm and well-being."
+      ],
+      "highRiskDetected": false,
+      "counselorMessage": null
+    }
+  },
+  {
+    "_id": "69c2c00f512de94b0ee25d60",
+    "userId": "pl1S6fWZivaEQufUt9wlWAl5zwz1",
+    "feeling": "i am feeling well\n",
+    "timestamp": "2026-03-24T16:47:11.129Z",
+    "analysis": {
+      "sentiment": "green",
+      "copingStrategies": [
+        "Take a moment to acknowledge and appreciate what's going well.",
+        "Engage in a pleasant activity you enjoy, even for a short time.",
+        "Practice some gentle stretching or light physical activity.",
+        "Try 'Box Breathing': Inhale for 4 counts, hold for 4, exhale for 4, hold for 4. Repeat several times to maintain focus and calm."
+      ],
+      "highRiskDetected": false,
+      "counselorMessage": null
+    }
+  }
+]
