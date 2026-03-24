@@ -7,6 +7,7 @@ import CheckIn from './pages/CheckIn';
 import Dashboard from './pages/Dashboard';
 import Onboarding from './pages/Onboarding';
 import Settings from './pages/Settings';
+import AdminDashboard from './pages/AdminDashboard';
 
 // Guard: redirect unauthenticated users back to onboarding
 function PrivateRoute({ children }) {
@@ -25,6 +26,7 @@ function AppRoutes() {
           <Route path="/" element={<Onboarding />} />
           <Route path="/checkin" element={<PrivateRoute><CheckIn /></PrivateRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/admin" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -227,3 +227,36 @@ export const getRecentAlerts = async (userId) => {
         return [];
     }
 };
+
+export const getAllActiveAlerts = async () => {
+    try {
+        const query = `
+            SELECT * FROM alerts
+            ORDER BY 
+                CASE WHEN status = 'OPEN' THEN 1 ELSE 2 END,
+                created_at DESC
+            LIMIT 100;
+        `;
+        const res = await pool.query(query);
+        return res.rows;
+    } catch (err) {
+        console.error('Error fetching all active alerts:', err.message);
+        return [];
+    }
+};
+
+export const resolveAlert = async (alertId) => {
+    try {
+        const query = `
+            UPDATE alerts 
+            SET status = 'RESOLVED' 
+            WHERE id = $1 
+            RETURNING *;
+        `;
+        const res = await pool.query(query, [alertId]);
+        return res.rows[0];
+    } catch (err) {
+        console.error('Error resolving alert:', err.message);
+        throw err;
+    }
+};

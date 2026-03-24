@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { HeartPulse, LayoutDashboard, ClipboardEdit, LogOut, User, Settings as SettingsIcon } from 'lucide-react';
+import { HeartPulse, LayoutDashboard, ClipboardEdit, LogOut, User, Settings as SettingsIcon, ShieldAlert } from 'lucide-react';
 
 export default function NavBar() {
   const { currentUser, logout } = useAuth();
@@ -47,6 +47,7 @@ export default function NavBar() {
         {[
           { path: '/checkin', label: 'Check-In', icon: <ClipboardEdit size={16} /> },
           { path: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
+          { path: '/admin', label: 'Counselor', icon: <ShieldAlert size={16} color="#f87171" /> },
           { path: '/settings', label: 'Settings', icon: <SettingsIcon size={16} /> },
         ].map(({ path, label, icon }) => (
           <button

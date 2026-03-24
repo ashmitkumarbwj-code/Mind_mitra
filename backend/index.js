@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import checkinRoutes from './src/routes/checkinRoutes.js';
 import dashboardRoutes from './src/routes/dashboardRoutes.js';
+import adminRoutes from './src/routes/adminRoutes.js';
 import { initCronJobs } from './src/services/cronService.js';
 
 dotenv.config();
@@ -15,6 +16,7 @@ app.use(express.json());
 
 app.use('/api/v1/checkin', checkinRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'MindMitra Backend is Live!' });
