@@ -31,7 +31,7 @@ export const updateContact = async (req, res) => {
 
 export const submitCheckIn = async (req, res) => {
     try {
-        const { userId, email, isAnonymous, text, microJournaling, chatHistory } = req.body;
+        const { userId, email, isAnonymous, text, microJournaling, chatHistory, visualEmotion } = req.body;
         
         if (!text) {
             return res.status(400).json({ error: 'Check-in text is required' });
@@ -49,8 +49,8 @@ export const submitCheckIn = async (req, res) => {
             upsertUser({ uid: safeUserId, email: email || null, isAnonymous: isAnonymous || false }).catch(()=>{});
         }
 
-        // Pass chatHistory (all previous messages) for conversational memory
-        const aiPayload = await generateDeepChatStream(text, res, chatHistory || []);
+        // Pass chatHistory (all previous messages) for conversational memory + webcam emotion
+        const aiPayload = await generateDeepChatStream(text, res, chatHistory || [], visualEmotion);
         
         const riskLevelUI = aiPayload.riskLevel; // "Green", "Amber", "Red"
         const finalReply = aiPayload.reply;

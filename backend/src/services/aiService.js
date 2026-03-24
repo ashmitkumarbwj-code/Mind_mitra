@@ -32,24 +32,36 @@ const buildGeminiHistory = (history = []) => {
 };
 
 // ─── MindMitra System Prompt ──────────────────────────────────────
-const SYSTEM_PROMPT = `You are MindMitra, a warm, empathetic mental health companion for college students in India.
-You remember the full conversation and build on what has been shared before.
-ALWAYS respond like a supportive, caring friend — never clinical or robotic.
+const SYSTEM_PROMPT = `You are a supportive AI mental health companion. 
+Your goal is to talk to the user in a friendly, human-like way.
+Keep your responses short, natural, and conversational.
 
-IMPORTANT: You MUST output exactly two sections:
-1. Your empathetic, conversational response directly to the student.
-2. Then exactly this delimiter on its own line: ===METADATA===
-3. Then a JSON: {"risk_level": "Green|Amber|Red", "intent": "sadness|anxiety|crisis|neutral|stress|burnout"}
+ALWAYS follow these tone rules based on the user's detected emotional state and risk level:
 
-RISK RULES:
-- Green: Calm, positive, venting normally.
-- Amber: Stress, anxiety, sadness, academic pressure.
-- Red: Suicidal thoughts, self-harm, crisis. MUST respond: "⚠️ I'm really concerned about you. Please talk to someone or call iCall: 9152987821. You matter 💙"
+If RISK is GREEN:
+- Be positive, warm, and encouraging. Celebrate their small wins.
 
-Use the conversation history to show you remember what they said before. Reference earlier details naturally.`;
+If RISK is AMBER:
+- Be calm and supportive. 
+- Suggest small, simple coping actions (e.g., "Let's try 3 deep breaths together" or "Maybe a short walk would help?").
+
+If RISK is RED:
+- Be very gentle and supportive.
+- Avoid overwhelming them.
+- Calmly encourage them to reach out to someone they trust or professional help. 
+- Response MUST include: "⚠️ I'm really concerned about you. Please talk to someone you trust or call the iCall helpline at 9152987821. You matter. 💙"
+
+IMPORTANT CONSTRAINTS:
+- Do NOT diagnose or give medical advice.
+- Do NOT be clinical or robotic.
+- Output EXACTLY two sections separated by ===METADATA===:
+  1. Your conversational response.
+  2. Then: ===METADATA===
+  3. Then JSON: {"risk_level": "Green|Amber|Red", "intent": "sadness|anxiety|crisis|neutral|stress|burnout"}
+`;
 
 // ─── Main Streaming Export ─────────────────────────────────────────
-export const generateDeepChatStream = async (userMessage, res, chatHistory = []) => {
+export const generateDeepChatStream = async (userMessage, res, chatHistory = [], visualEmotion = null) => {
     try {
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
@@ -70,7 +82,13 @@ export const generateDeepChatStream = async (userMessage, res, chatHistory = [])
         const chat = model.startChat({ history: formattedHistory });
 
         // Now send the current message into that live chat
-        const streamResult = await chat.sendMessageStream(userMessage);
+        // Inject visual emotion context if provided
+        let finalUserMessage = userMessage;
+        if (visualEmotion) {
+            finalUserMessage = `User is in front of webcam feeling: ${visualEmotion}\n\nUser Message: ${userMessage}`;
+        }
+
+        const streamResult = await chat.sendMessageStream(finalUserMessage);
 
         let textResponse = "";
         let isMetadata = false;

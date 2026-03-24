@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Send, Activity, ShieldAlert, AlertCircle, Mic, MicOff, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import * as faceapi from 'face-api.js';
+import { Camera, CameraOff, Sparkles } from 'lucide-react';
 
 export default function CheckIn() {
   const navigate = useNavigate();
@@ -13,10 +15,15 @@ export default function CheckIn() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [showWebcam, setShowWebcam] = useState(false);
+  const [currentEmotion, setCurrentEmotion] = useState('neutral');
+  const [modelsLoaded, setModelsLoaded] = useState(false);
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
   const todayKey = () => {
     const d = new Date();
@@ -105,6 +112,67 @@ export default function CheckIn() {
     };
   }, [currentUser]);
 
+  // 3. Load Face-API Models
+  useEffect(() => {
+    const loadModels = async () => {
+      const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
+        ]);
+        setModelsLoaded(true);
+        console.log('Face models loaded 🚀');
+      } catch (err) {
+        console.error('Face model load failed', err);
+      }
+    };
+    loadModels();
+  }, []);
+
+  // 4. Real-time Emotion Detection Loop
+  useEffect(() => {
+    let interval;
+    if (showWebcam && modelsLoaded && videoRef.current) {
+      interval = setInterval(async () => {
+        try {
+          const detections = await faceapi.detectSingleFace(
+            videoRef.current,
+            new faceapi.TinyFaceDetectorOptions()
+          ).withFaceExpressions();
+
+          if (detections && detections.expressions) {
+            const topEmotion = Object.entries(detections.expressions).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+            setCurrentEmotion(topEmotion);
+          }
+        } catch (e) {}
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [showWebcam, modelsLoaded]);
+
+  const startVideo = () => {
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      })
+      .catch(err => console.error(err));
+  };
+
+  const stopVideo = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = videoRef.current.srcObject.getTracks();
+      tracks.forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  useEffect(() => {
+    if (showWebcam) startVideo();
+    else stopVideo();
+    return () => stopVideo();
+  }, [showWebcam]);
+
   const toggleListening = async () => {
     if (!recognitionRef.current) {
       return alert('Voice typing is not supported in this browser. We highly recommend using Google Chrome for full functionality.');
@@ -163,11 +231,12 @@ export default function CheckIn() {
           email: currentUser?.email || null,
           isAnonymous: currentUser?.isAnonymous || false,
           text: userMsg.text,
-          // Send last 12 messages as context history (excluding the new empty bot placeholder)
+          // Send last 12 messages as context history
           chatHistory: messages
             .filter(m => m.text && m.text.trim() !== '')
             .slice(-12)
-            .map(m => ({ sender: m.sender, text: m.text }))
+            .map(m => ({ sender: m.sender, text: m.text })),
+          visualEmotion: showWebcam ? currentEmotion : null
         })
       });
 
@@ -274,6 +343,27 @@ export default function CheckIn() {
           </h1>
           <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>Your safe space to talk.</p>
         </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => setShowWebcam(!showWebcam)}
+            style={{
+              background: showWebcam ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+              border: showWebcam ? '1px solid rgba(139, 92, 246, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+              color: showWebcam ? '#a5b4fc' : '#94a3b8',
+              padding: '8px 16px',
+              borderRadius: '12px',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            {showWebcam ? <Camera size={16} /> : <CameraOff size={16} />}
+            {showWebcam ? 'Visual Eyes ON' : 'Enable Visual Mood'}
+          </button>
+        </div>
       </div>
 
       {/* Chat History Window */}
@@ -356,8 +446,56 @@ export default function CheckIn() {
             <div className="animate-pulse" style={{ width: 8, height: 8, borderRadius: '50%', background: '#818cf8', animationDelay: '0.4s' }} />
           </div>
         )}
-        <div ref={messagesEndRef} />
-      </div>
+        </div>
+
+      {/* Floating Webcam Preview */}
+      {showWebcam && (
+        <div style={{
+          position: 'fixed',
+          bottom: '100px',
+          right: '20px',
+          width: '160px',
+          height: '120px',
+          background: '#0f172a',
+          borderRadius: '16px',
+          border: '2px solid rgba(139, 92, 246, 0.4)',
+          overflow: 'hidden',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+          zIndex: 50,
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: 'rgba(0,0,0,0.6)',
+            color: 'white',
+            fontSize: '0.7rem',
+            padding: '4px 8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px',
+            textTransform: 'capitalize'
+          }}>
+            <Sparkles size={10} color="#a5b4fc" /> Detected: {currentEmotion}
+          </div>
+          {!modelsLoaded && (
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(15, 23, 42, 0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', textAlign: 'center', fontSize: '0.7rem' }}>
+              Initializing Vision...
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Input Area */}
       <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
