@@ -193,6 +193,8 @@ export default function CheckIn() {
                     copingStrategy: parsed.copingStrategy,
                     empathyEcho: parsed.empathyEcho
                 } : m));
+                // 🔄 Signal dashboard to refresh with latest data
+                window.dispatchEvent(new CustomEvent('checkin-complete'));
             }
           } catch(e) {}
         }

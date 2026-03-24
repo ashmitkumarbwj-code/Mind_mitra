@@ -35,20 +35,40 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchDashboard = async (isBackground = false) => {
+    if (!currentUser) return;
+    if (!isBackground) setLoading(true);
+    else setRefreshing(true);
+    try {
+      const res = await axios.get(`${API_BASE}/api/v1/dashboard/user?userId=${currentUser.uid}&_t=${Date.now()}`);
+      setData(res.data.data);
+    } catch (err) {
+      console.error('Dashboard fetch failed', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (!currentUser) return;
-    const fetch = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/api/v1/dashboard/user?userId=${currentUser.uid}&_t=${Date.now()}`);
-        setData(res.data.data);
-      } catch (err) {
-        console.error('Dashboard fetch failed', err);
-      } finally {
-        setLoading(false);
-      }
+
+    // Initial load
+    fetchDashboard(false);
+
+    // 🔄 Auto-refresh every 30 seconds
+    const interval = setInterval(() => fetchDashboard(true), 30000);
+
+    // 🔔 Refresh instantly when a check-in gets an AI reply
+    const onCheckinComplete = () => fetchDashboard(true);
+    window.addEventListener('checkin-complete', onCheckinComplete);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('checkin-complete', onCheckinComplete);
     };
-    fetch();
   }, [currentUser]);
 
   if (loading) return (
