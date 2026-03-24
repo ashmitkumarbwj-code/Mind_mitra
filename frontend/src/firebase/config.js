@@ -1,18 +1,20 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBvqI8TYCu6CvPjocuz8BVLs3hCRxkhER0",
-  authDomain: "mind-mitra-c23c1.firebaseapp.com",
-  projectId: "mind-mitra-c23c1",
-  storageBucket: "mind-mitra-c23c1.firebasestorage.app",
-  messagingSenderId: "634917945765",
-  appId: "1:634917945765:web:9ac91d1441c3c3fe97284c",
-  measurementId: "G-H1GLXW2PEJ"
+  apiKey: "AIzaSyBUQZRRXyHjYA3ex-OEzdugGzcgn4QR1RA",
+  authDomain: "mind-mitra-78dbc.firebaseapp.com",
+  projectId: "mind-mitra-78dbc",
+  storageBucket: "mind-mitra-78dbc.firebasestorage.app",
+  messagingSenderId: "473717376171",
+  appId: "1:473717376171:web:123cb38f6f8b8b0e8be3ee",
+  measurementId: "G-CS2CDR3BPM"
 };
 
 const app = initializeApp(firebaseConfig);
+export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
