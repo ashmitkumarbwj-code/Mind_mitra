@@ -8,6 +8,7 @@ export default function CheckIn() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
+  const [checkedInToday, setCheckedInToday] = useState(false);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,6 +17,11 @@ export default function CheckIn() {
 
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
+
+  const todayKey = () => {
+    const d = new Date();
+    return `checkin-done-${currentUser?.uid || 'anon'}-${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  };
 
   // Auto-scroll to bottom of chat
   const scrollToBottom = () => {
@@ -35,35 +41,39 @@ export default function CheckIn() {
         const res = await axios.get(`${API_BASE}/api/v1/checkin/history?userId=${uid}&_t=${Date.now()}`);
         const history = res.data.data.reverse(); // oldest first
 
-        const greeting = currentUser?.isAnonymous
-          ? 'Hey there! How are you feeling today?'
-          : `Welcome back, ${currentUser?.displayName?.split(' ')[0] || 'there'}! How are you feeling today?`;
-
-        let chatFlow = [{ id: 'init', sender: 'bot', text: greeting }];
-
+        // ── Check if already checked in today ──────────────────
         if (history.length > 0) {
-          history.forEach(c => {
-            if (c.raw_message) {
-              chatFlow.push({ id: `u-${c.id}`, sender: 'user', text: c.raw_message });
-            }
-            if (c.ai_response) {
-              chatFlow.push({
-                id: `b-${c.id}`,
-                sender: 'bot',
-                text: c.ai_response,
-                riskLevel: c.risk_level,
-                intent: c.intent
-              });
-            }
-          });
-          // Add a fresh prompt at the end of history
-          chatFlow.push({ id: 'prompt-now', sender: 'bot', text: "I'm here for you right now. What's on your mind today?" });
+          const lastCheckin = new Date(history[history.length - 1].createdAt || history[history.length - 1].created_at);
+          const today = new Date();
+          const isToday = lastCheckin.getFullYear() === today.getFullYear()
+            && lastCheckin.getMonth() === today.getMonth()
+            && lastCheckin.getDate() === today.getDate();
+          if (isToday) {
+            setCheckedInToday(true);
+            localStorage.setItem(todayKey(), 'true');
+            return;
+          }
         }
 
-        setMessages(chatFlow);
+        // Check localStorage fallback (works even without MongoDB)
+        if (localStorage.getItem(todayKey()) === 'true') {
+          setCheckedInToday(true);
+          return;
+        }
+
+        const greeting = currentUser?.isAnonymous
+          ? 'Hey there! 💙 How are you feeling today?'
+          : `Hey ${currentUser?.displayName?.split(' ')[0] || 'there'}! 💙 How are you feeling today? Take a moment — your feelings matter.`;
+
+        setMessages([{ id: 'init', sender: 'bot', text: greeting }]);
       } catch (err) {
         console.error('Failed to load history', err);
-        setMessages([{ id: 'init', sender: 'bot', text: 'How are you feeling today?' }]);
+        // Check localStorage fallback
+        if (localStorage.getItem(todayKey()) === 'true') {
+          setCheckedInToday(true);
+          return;
+        }
+        setMessages([{ id: 'init', sender: 'bot', text: "Hey! 💙 How are you feeling today?" }]);
       }
     };
     loadHistory();
@@ -193,6 +203,9 @@ export default function CheckIn() {
                     copingStrategy: parsed.copingStrategy,
                     empathyEcho: parsed.empathyEcho
                 } : m));
+                // 🗓️ Mark today's check-in as complete
+                localStorage.setItem(todayKey(), 'true');
+                setCheckedInToday(true);
                 // 🔄 Signal dashboard to refresh with latest data
                 window.dispatchEvent(new CustomEvent('checkin-complete'));
             }
@@ -224,6 +237,31 @@ export default function CheckIn() {
       console.error('Failed to log coping action', err);
     }
   };
+
+  // ── Already Checked In Today Screen ────────────────────────────
+  if (checkedInToday) {
+    const name = currentUser?.isAnonymous ? 'there' : currentUser?.displayName?.split(' ')[0] || 'there';
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '24px', padding: '40px 20px', textAlign: 'center' }}>
+        <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(52,211,153,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(52,211,153,0.3)' }}>
+          <CheckCircle2 size={40} color="#34d399" />
+        </div>
+        <div>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '1.8rem' }}>You're all done for today, {name}! 🌟</h2>
+          <p style={{ color: '#64748b', margin: 0, maxWidth: '400px', lineHeight: '1.6' }}>
+            You've already completed your daily check-in. Taking care of your mental health every day is a powerful habit. See you tomorrow!
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button className="button-primary" onClick={() => navigate('/dashboard')}>📊 View My Dashboard</button>
+          <button className="button-secondary" onClick={() => setCheckedInToday(false)} style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#94a3b8', cursor: 'pointer' }}>
+            💬 Talk Anyway
+          </button>
+        </div>
+        <p style={{ color: '#334155', fontSize: '0.8rem' }}>Next check-in available tomorrow morning</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', maxWidth: '800px', margin: '0 auto', padding: '20px 10px' }}>
