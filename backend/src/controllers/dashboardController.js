@@ -16,47 +16,32 @@ export const getUserDashboard = async (req, res) => {
         const uid = user_id || userId || 'anonymous';
         const sevenDaysAgo = daysAgo(7);
 
-        // ─── 1. MongoDB Aggregation Pipeline ──────────────────
-        const [moodAggregation, allRecentCheckIns, alerts, user] = await Promise.all([
-
-            // Mood Trend: daily average sentiment for last 7 days
-            CheckIn.aggregate([
-                { $match: { userId: uid, createdAt: { $gte: sevenDaysAgo } } },
-                {
-                    $group: {
-                        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-                        avgSentiment: { $avg: '$sentimentScore' },
-                        count: { $sum: 1 },
-                        topRisk: { $last: '$riskLevel' },
-                        emotions: { $push: '$intent' }
-                    }
-                },
-                { $sort: { '_id': 1 } }
-            ]),
-
-            // All recent check-ins for other calculations
+        // ─── Parallel Queries ─────────────────────────────────
+        const [allRecentCheckIns, alerts, user] = await Promise.all([
             CheckIn.find({ userId: uid, createdAt: { $gte: sevenDaysAgo } })
                 .sort({ createdAt: -1 })
                 .select('rawMessage sentimentScore riskLevel intent createdAt')
                 .lean(),
-
-            // Active alerts
             Alert.find({ userId: uid, status: 'OPEN' }).sort({ createdAt: -1 }).limit(5).lean(),
-
-            // User profile
             User.findById(uid).lean()
         ]);
 
-        // ─── 2. Mood Trend (Fill all 7 days even if no data) ──
+        // ─── Mood Trend: Build 7-day grid ─────────────────────
         const moodTrend = [];
         for (let i = 6; i >= 0; i--) {
             const d = daysAgo(i);
-            const key = d.toISOString().split('T')[0];
-            const found = moodAggregation.find(a => a._id === key);
+            const next = daysAgo(i - 1);
+            const dayCheckins = allRecentCheckIns.filter(c => {
+                const t = new Date(c.createdAt);
+                return t >= d && t < next;
+            });
+            const score = dayCheckins.length > 0
+                ? parseFloat((dayCheckins.reduce((s, c) => s + (c.sentimentScore || 0), 0) / dayCheckins.length).toFixed(2))
+                : null;
             moodTrend.push({
-                date: key,
-                score: found ? parseFloat(found.avgSentiment.toFixed(2)) : null,
-                count: found ? found.count : 0,
+                date: d.toISOString().split('T')[0],
+                score,
+                count: dayCheckins.length
             });
         }
 
