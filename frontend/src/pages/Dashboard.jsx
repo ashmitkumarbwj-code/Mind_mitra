@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const LazyDashboardChart = lazy(() => import('../components/DashboardChart'));
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -16,7 +17,7 @@ export default function Dashboard() {
     if (!currentUser) return;
     const fetchDashboard = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/v1/dashboard/user?userId=${currentUser.uid}&_t=${Date.now()}`);
+        const res = await axios.get(`${API_BASE}/api/v1/dashboard/user?userId=${currentUser.uid}&_t=${Date.now()}`);
         setData(res.data.data);
       } catch (error) {
         console.error('Failed to fetch dashboard data', error);

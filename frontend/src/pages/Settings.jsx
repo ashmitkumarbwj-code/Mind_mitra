@@ -3,6 +3,8 @@ import axios from 'axios';
 import { ShieldAlert, User, Phone, Save, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 export default function Settings() {
   const { currentUser } = useAuth();
   const [name, setName] = useState('');
@@ -17,7 +19,7 @@ export default function Settings() {
       try {
         // We can get the user data from the dashboard endpoint or a dedicated one.
         // For simplicity, let's assume we can fetch it.
-        const res = await axios.get(`http://localhost:5000/api/v1/dashboard/user?userId=${currentUser.uid}`);
+        const res = await axios.get(`${API_BASE}/api/v1/dashboard/user?userId=${currentUser.uid}`);
         if (res.data.data.user) {
           setName(res.data.data.user.emergency_contact_name || '');
           setPhone(res.data.data.user.emergency_contact_phone || '');
@@ -36,7 +38,7 @@ export default function Settings() {
     setSuccess(false);
 
     try {
-      await axios.put('http://localhost:5000/api/v1/checkin/emergency-contact', {
+      await axios.put(`${API_BASE}/api/v1/checkin/emergency-contact`, {
         userId: currentUser.uid,
         name,
         phone
