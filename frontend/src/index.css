@@ -102,8 +102,10 @@ h1, h2, h3, h4, h5, h6 {
 /* --- Premium Utilities --- */
 .glass-panel {
   background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transform: translateZ(0); /* Force Hardware Acceleration */
+  will-change: transform, backdrop-filter;
   border: 1px solid var(--glass-border);
   border-top: 1px solid rgba(255,255,255,0.15);
   border-left: 1px solid rgba(255,255,255,0.1);

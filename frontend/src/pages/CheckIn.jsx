@@ -163,10 +163,7 @@ export default function CheckIn() {
         setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'bot', text: 'Sorry, I am having trouble connecting to the server. Please try again in a moment.' }]);
       }
     } finally {
-      // ✅ 2. Add Delay Between Requests (VERY IMPORTANT)
-      setTimeout(() => {
-        setLoading(false);
-      }, 2000); // 2 sec cooldown delay
+      setLoading(false);
     }
   };
 
