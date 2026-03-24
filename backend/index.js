@@ -17,7 +17,7 @@ app.use('/api/v1/checkin', checkinRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 
 app.get('/', (req, res) => {
-  res.redirect('http://localhost:5173/');
+  res.status(200).json({ status: 'ok', message: 'MindMitra Backend is Live!' });
 });
 
 // Silence Chrome DevTools internal probe
@@ -33,3 +33,5 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   initCronJobs();
 });
+
+export default app;
