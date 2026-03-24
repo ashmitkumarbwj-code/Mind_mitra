@@ -1,22 +1,42 @@
 import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+dotenv.config();
 
-// Initialize Ethereal Email Transporter for instant verifiable local testing
 let transporter;
+let isSandboxMode = true;
 
 const setupTransporter = async () => {
-    // Generate test SMTP service account from ethereal.email
-    let testAccount = await nodemailer.createTestAccount();
-
-    transporter = nodemailer.createTransport({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false, // true for 465, false for other ports
-        auth: {
-            user: testAccount.user, // generated ethereal user
-            pass: testAccount.pass, // generated ethereal password
-        },
-    });
-    console.log("[EMAIL SERVICE] Nodemailer Ethereal Transporter Ready.");
+    try {
+        if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+            // Production Branch: Real outbound email transmission
+            transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: parseInt(process.env.SMTP_PORT) || 587,
+                secure: parseInt(process.env.SMTP_PORT) === 465, 
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS,
+                },
+            });
+            isSandboxMode = false;
+            console.log("[EMAIL SERVICE] Production SMTP Router Ready.");
+        } else {
+            // Development Branch: Silent Ethereal Sandbox fallback
+            let testAccount = await nodemailer.createTestAccount();
+            transporter = nodemailer.createTransport({
+                host: "smtp.ethereal.email",
+                port: 587,
+                secure: false, 
+                auth: {
+                    user: testAccount.user, 
+                    pass: testAccount.pass, 
+                },
+            });
+            console.log("[EMAIL SERVICE] Nodemailer Sandbox Active (Keys not found).");
+        }
+    } catch (err) {
+        console.error("[EMAIL SERVICE] Critical Failure initializing transporter:", err);
+    }
 };
 
 setupTransporter();
@@ -72,15 +92,19 @@ export const sendProactiveEmail = async (user, type) => {
 
         // Send mail with defined transport object
         let info = await transporter.sendMail({
-            from: '"MindMitra Proactive AI" <support@mindmitra.edu>',
+            from: process.env.SMTP_FROM_EMAIL || '"MindMitra Proactive AI" <support@mindmitra.edu>',
             to: user.email || "anonymous_student@mindmitra.edu",
             subject: subject,
             html: htmlBody,
         });
 
         console.log("-----------------------------------------");
-        console.log(`✉️ [EMAIL SENT] to ${user.email || user.id}`);
-        console.log(`🔗 Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+        console.log(`✉️ [EMAIL SENT] | Type: ${type} | To: ${user.email || user.id}`);
+        if (isSandboxMode) {
+            console.log(`🔗 Preview Sandbox URL: ${nodemailer.getTestMessageUrl(info)}`);
+        } else {
+            console.log(`✅ Message Handed Off to Production Carrier: ${info.messageId}`);
+        }
         console.log("-----------------------------------------");
         
     } catch (err) {
