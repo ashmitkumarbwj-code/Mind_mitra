@@ -4,6 +4,12 @@ import axios from 'axios';
 import { ArrowLeft, AlertCircle, Smile, Meh, Frown } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
+const MarginlessContainer = ({ children }) => (
+  <div style={{ width: '100%', height: '100%', marginLeft: '-20px' }}>
+    {children}
+  </div>
+);
+
 export default function Analytics({ user }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -157,8 +163,4 @@ export default function Analytics({ user }) {
   );
 }
 
-const MarginlessContainer = ({ children }) => (
-  <div style={{ width: '100%', height: '100%', marginLeft: '-20px' }}>
-    {children}
-  </div>
-);
+
