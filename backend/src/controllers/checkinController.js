@@ -31,7 +31,7 @@ export const updateContact = async (req, res) => {
 
 export const submitCheckIn = async (req, res) => {
     try {
-        const { userId, email, isAnonymous, text, microJournaling } = req.body;
+        const { userId, email, isAnonymous, text, microJournaling, chatHistory } = req.body;
         
         if (!text) {
             return res.status(400).json({ error: 'Check-in text is required' });
@@ -41,18 +41,16 @@ export const submitCheckIn = async (req, res) => {
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
-        // Let React know immediately a stream is active
         res.flushHeaders(); 
 
         const safeUserId = userId || `anon-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-        // Upsert User to ensure record exists (Fire and Forget)
         if (safeUserId) {
             upsertUser({ uid: safeUserId, email: email || null, isAnonymous: isAnonymous || false }).catch(()=>{});
         }
 
-        // 1. Core Chatbot Logic & Risk Assessment (SSE Streamed directly to 'res')
-        const aiPayload = await generateDeepChatStream(text, res);
+        // Pass chatHistory (all previous messages) for conversational memory
+        const aiPayload = await generateDeepChatStream(text, res, chatHistory || []);
         
         const riskLevelUI = aiPayload.riskLevel; // "Green", "Amber", "Red"
         const finalReply = aiPayload.reply;

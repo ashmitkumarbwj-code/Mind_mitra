@@ -4,67 +4,57 @@ dotenv.config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// ✅ 3. Add Simple Cache (SMART FIX) to save API calls during demo
-const messageCache = new Map();
-
-// ✅ 4. Create local offline response function (HYBRID FALLBACK)
+// ─── Local Keyword Fallback Engine ────────────────────────────────
 const generateLocalFallback = (message) => {
     const text = message.toLowerCase().trim();
-    console.log("Local Fallback Check for:", text);
-
-    const crisisKeywords = ["suicid", "sucide", "sucid", "sicide", "sicidal", "die", "kill", "end my life", "harm", "giving up", "hopeless"];
-    const isCrisis = crisisKeywords.some(kw => text.includes(kw));
-    console.log("Crisis Detection Result:", isCrisis);
-
-    if (isCrisis) {
-        return {
-            reply: "⚠️ I am here for you, and I am very concerned. Please talk to someone you trust or contact the iCall helpline immediately at 9152987821. You matter. 💙",
-            riskLevel: "Red",
-            intent: "crisis"
-        };
+    const crisisKeywords = ["suicid", "sucide", "sucid", "sicide", "sicidal", "die", "kill", "end my life", "harm myself", "giving up", "hopeless", "end it"];
+    if (crisisKeywords.some(kw => text.includes(kw))) {
+        return { reply: "⚠️ I'm really concerned about you right now. Please talk to someone you trust or contact the iCall helpline immediately at 9152987821. You matter. 💙", riskLevel: "Red", intent: "crisis" };
     }
-    if (text.includes("sad") || text.includes("depressed") || text.includes("bad")) {
-        return {
-            reply: "I hear you, and I’m so sorry you are feeling this way. It's perfectly okay to have sad days. I'm here to listen 💙.",
-            riskLevel: "Amber",
-            intent: "sadness"
-        };
+    if (text.includes("sad") || text.includes("depress") || text.includes("crying")) {
+        return { reply: "I hear you, and I'm so sorry you're feeling this way. Sad days are real, and you don't have to face them alone 💙.", riskLevel: "Amber", intent: "sadness" };
     }
-    if (text.includes("stress") || text.includes("overwhelmed") || text.includes("exhausted")) {
-        return {
-            reply: "That sounds incredibly stressful. Try taking a quick 5-minute break right now. Drink some water, stretch your shoulders, and breathe. You've got this.",
-            riskLevel: "Amber",
-            intent: "stress"
-        };
+    if (text.includes("stress") || text.includes("overwhelm") || text.includes("exhaust")) {
+        return { reply: "That sounds incredibly heavy. Take a 5-minute break right now — drink some water, breathe. You've got this.", riskLevel: "Amber", intent: "stress" };
     }
-    if (text.includes("anxiety") || text.includes("anxious") || text.includes("panic")) {
-        return {
-            reply: "Let's take a slow breath together. Inhale for 4 seconds, hold, and exhale. You are safe right now, and this feeling will pass.",
-            riskLevel: "Amber",
-            intent: "anxiety"
-        };
+    if (text.includes("anxious") || text.includes("anxiety") || text.includes("panic")) {
+        return { reply: "Let's slow this down together. Inhale for 4 counts, hold for 4, exhale for 4. You are safe right now.", riskLevel: "Amber", intent: "anxiety" };
     }
-
-    return {
-        reply: "I'm listening 💙. Tell me a bit more about how your day is going.",
-        riskLevel: "Green",
-        intent: "neutral"
-    };
+    return { reply: "I'm listening 💙. Tell me more about how you're feeling.", riskLevel: "Green", intent: "neutral" };
 };
 
-export const generateDeepChatStream = async (userMessage, res) => {
-    // Check cache first before hitting API
-    const cachedResponse = messageCache.get(userMessage.toLowerCase().trim());
-    if (cachedResponse) {
-        console.log("Serving response from cache for:", userMessage);
-        res.write(`data: ${JSON.stringify({ text: cachedResponse.reply })}\n\n`);
-        return cachedResponse;
-    }
+// ─── Build Gemini chat history format from frontend msg array ─────
+const buildGeminiHistory = (history = []) => {
+    return history.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.text || '' }]
+    })).filter(m => m.parts[0].text.trim() !== '');
+};
 
+// ─── MindMitra System Prompt ──────────────────────────────────────
+const SYSTEM_PROMPT = `You are MindMitra, a warm, empathetic mental health companion for college students in India.
+You remember the full conversation and build on what has been shared before.
+ALWAYS respond like a supportive, caring friend — never clinical or robotic.
+
+IMPORTANT: You MUST output exactly two sections:
+1. Your empathetic, conversational response directly to the student.
+2. Then exactly this delimiter on its own line: ===METADATA===
+3. Then a JSON: {"risk_level": "Green|Amber|Red", "intent": "sadness|anxiety|crisis|neutral|stress|burnout"}
+
+RISK RULES:
+- Green: Calm, positive, venting normally.
+- Amber: Stress, anxiety, sadness, academic pressure.
+- Red: Suicidal thoughts, self-harm, crisis. MUST respond: "⚠️ I'm really concerned about you. Please talk to someone or call iCall: 9152987821. You matter 💙"
+
+Use the conversation history to show you remember what they said before. Reference earlier details naturally.`;
+
+// ─── Main Streaming Export ─────────────────────────────────────────
+export const generateDeepChatStream = async (userMessage, res, chatHistory = []) => {
     try {
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
-            generationConfig: { temperature: 0.7 },
+            systemInstruction: SYSTEM_PROMPT,
+            generationConfig: { temperature: 0.75, maxOutputTokens: 800 },
             safetySettings: [
                 { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
                 { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -73,31 +63,22 @@ export const generateDeepChatStream = async (userMessage, res) => {
             ]
         });
 
-        const prompt = `You are MindMitra, an advanced clinical-grade mental health AI for college students.
-ALWAYS ACT LIKE A SUPPORTIVE FRIEND, NOT A MACHINE.
+        // Build history — all previous messages EXCEPT the latest one
+        const formattedHistory = buildGeminiHistory(chatHistory);
 
-You MUST output exactly two sections in this exact order:
-1. First, write your empathetic response directly to the user.
-2. Second, on a new line, write EXACTLY this delimiter: ===METADATA===
-3. Third, return a JSON object describing the user's state.
+        // startChat() gives Gemini full conversational context
+        const chat = model.startChat({ history: formattedHistory });
 
-JSON Format: {"risk_level": "Green|Amber|Red", "intent": "sadness|anxiety|crisis|neutral|stress"}
+        // Now send the current message into that live chat
+        const streamResult = await chat.sendMessageStream(userMessage);
 
-RESPONSE RULES:
-- Green: General chat/calm/positive.
-- Amber: Stress/anxiety/overwhelmed. Validate feelings then give a concrete actionable solution in a short conversational way.
-- Red: Suicide/Harm. Response MUST exactly be: "⚠️ I’m really concerned about you. Please talk to someone you trust or contact the iCall helpline immediately at 9152987821. You matter 💙"
-
-User message: "${userMessage}"`;
-
-        const streamResult = await model.generateContentStream(prompt);
         let textResponse = "";
         let isMetadata = false;
         let metadataString = "";
 
         for await (const chunk of streamResult.stream) {
             const chunkText = chunk.text();
-            
+
             if (isMetadata) {
                 metadataString += chunkText;
                 continue;
@@ -117,32 +98,30 @@ User message: "${userMessage}"`;
             }
         }
 
-        // Parse Metadata
+        // Parse Metadata from delimited JSON block
         let parsed = { risk_level: "Green", intent: "neutral" };
         try {
             const jsonMatch = metadataString.match(/\{[\s\S]*\}/);
             if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
-        } catch(e) { console.error("Stream JSON parse failed", e); }
+        } catch (e) { console.error("Metadata parse failed", e.message); }
 
+        // Empathy echo card for negative intents
         let empathyEcho = null;
         const negativeIntents = ["anxiety", "panic", "stress", "sadness", "burnout", "depression", "overwhelmed"];
-        if (parsed.intent && negativeIntents.includes(parsed.intent.toLowerCase())) {
+        if (negativeIntents.includes(parsed.intent?.toLowerCase())) {
             const count = Math.floor(Math.random() * 80) + 12;
-            empathyEcho = `Fun Fact: ${count} other students on campus reported feeling exactly this way this week. You are not alone in this.`;
+            empathyEcho = `${count} other students on campus reported feeling exactly this way this week. You are not alone.`;
         }
 
-        const payload = {
-            reply: textResponse.trim().replace(/^===METADATA===/, ''),
+        return {
+            reply: textResponse.trim(),
             riskLevel: parsed.risk_level || "Green",
             intent: parsed.intent || "neutral",
             empathyEcho
         };
 
-        messageCache.set(userMessage.toLowerCase().trim(), payload);
-        return payload;
-
     } catch (error) {
-        console.error("Gemini Failure Triggered. Error:", error.message);
+        console.error("Gemini API Error:", error.message);
         const fallback = generateLocalFallback(userMessage);
         res.write(`data: ${JSON.stringify({ text: fallback.reply })}\n\n`);
         return fallback;

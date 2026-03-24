@@ -152,7 +152,12 @@ export default function CheckIn() {
           userId: currentUser?.uid || null,
           email: currentUser?.email || null,
           isAnonymous: currentUser?.isAnonymous || false,
-          text: userMsg.text
+          text: userMsg.text,
+          // Send last 12 messages as context history (excluding the new empty bot placeholder)
+          chatHistory: messages
+            .filter(m => m.text && m.text.trim() !== '')
+            .slice(-12)
+            .map(m => ({ sender: m.sender, text: m.text }))
         })
       });
 
