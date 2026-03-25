@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Send, Activity, ShieldAlert, AlertCircle, Mic, MicOff, CheckCircle2 } from 'lucide-react';
+import { Send, Activity, ShieldAlert, AlertCircle, Mic, MicOff, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import * as faceapi from 'face-api.js';
 import { Camera, CameraOff, Sparkles } from 'lucide-react';
@@ -169,16 +169,17 @@ export default function CheckIn() {
     }
   };
 
-  const handleSend = async (e) => {
-    e.preventDefault();
+  const handleSend = async (e, retryText = null) => {
+    if (e) e.preventDefault();
     if (loading) return; 
-    if (!text.trim()) return;
+    const messageContent = retryText || text.trim();
+    if (!messageContent) return;
 
     // Add user msg and an empty bot bubble placeholder instantly
     const userMsg = { 
       id: Date.now().toString(), 
       sender: 'user', 
-      text: text.trim(),
+      text: messageContent,
       visualEmotion: showWebcam ? currentEmotion : null 
     };
     const botMsgId = Date.now().toString() + 'bot';
@@ -261,7 +262,8 @@ export default function CheckIn() {
       console.error('Stream failed', error);
       setMessages(prev => prev.map(m => m.id === botMsgId ? {
           ...m, 
-          text: "I'm a bit overwhelmed with traffic right now, but I hear you. Tell me more 💙",
+          text: "I'm having a bit of trouble connecting to my creative center right now. Click the retry icon below to try again 💙",
+          isError: true,
           riskLevel: "Amber"
       } : m));
     } finally {
@@ -353,6 +355,34 @@ export default function CheckIn() {
                   {isAmber && <><div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fbbf24' }} /> Elevated Stress</>}
                   {isRed && <><div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f87171' }} /> High Risk Detected</>}
                 </div>
+              )}
+
+              {/* 🔥 MINDBLOWING: Retry logic UI */}
+              {isBot && msg.isError && (
+                 <button 
+                   className="animate-pulse"
+                   onClick={() => {
+                     const lastUserMsg = [...messages].reverse().find(m => m.sender === 'user');
+                     setMessages(prev => prev.filter(m => m.id !== msg.id));
+                     handleSend(null, lastUserMsg?.text);
+                   }}
+                   style={{
+                     marginTop: '12px',
+                     background: 'rgba(239, 68, 68, 0.1)',
+                     border: '1px solid rgba(239, 68, 68, 0.3)',
+                     color: '#f87171',
+                     padding: '8px 16px',
+                     borderRadius: '12px',
+                     fontSize: '0.8rem',
+                     cursor: 'pointer',
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '8px',
+                     transition: 'all 0.2s ease'
+                   }}
+                 >
+                   <RefreshCw size={14} /> Retry AI Response
+                 </button>
               )}
 
               {/* Dynamic Therapeutic UI: Grounding Circle */}

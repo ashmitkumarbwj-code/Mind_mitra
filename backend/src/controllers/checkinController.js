@@ -51,12 +51,19 @@ export const submitCheckIn = async (req, res) => {
 
         const safeUserId = userId || `user-${Date.now()}`;
 
+        // 🔥 MINDBLOWING: Contextual Empathy (Reference last sentiment)
+        const history = await getRecentCheckIns(safeUserId);
+        const lastCheckIn = history[0];
+        let contextualContext = "";
+        if (lastCheckIn) {
+            contextualContext = `\n[CONTEXT] User's last check-in was at ${lastCheckIn.createdAt}. They were feeling ${lastCheckIn.riskLevel}. 
+            If they are doing better now, celebrate. If worse, be extra supportive.`;
+        }
+
         // 🔥 STEP 2.2 — Stream AI chunks & STEP 2.3 — Build fullResponse string
         console.log(`[SSE] Initiating AI processing for ${safeUserId}...`);
         const streamTarget = isStreaming ? res : null;
-        
-        // generateDeepChatStream handles res.write internally
-        const aiPayload = await generateDeepChatStream(checkinText, streamTarget, chatHistory || [], visualEmotion);
+        const aiPayload = await generateDeepChatStream(checkinText + contextualContext, streamTarget, chatHistory || [], visualEmotion);
         
         // 🔥 STEP 2.4 — Capture metadata (intent, riskLevel, sentiment)
         const riskLevelUI = aiPayload.riskLevel; 

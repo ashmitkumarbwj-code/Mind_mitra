@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import CheckIn from '../models/CheckIn.js';
 import Alert from '../models/Alert.js';
 import User from '../models/User.js';
@@ -13,7 +14,14 @@ const daysAgo = (n) => {
 export const getUserDashboard = async (req, res) => {
     try {
         const { user_id, userId } = req.query;
-        const uid = user_id || userId || 'anonymous';
+        const uid = user_id || userId;
+        
+        if (!uid) {
+            console.error('[DASHBOARD] REJECTED: No userId/user_id provided in query.');
+            return res.status(400).json({ error: 'User ID is required' });
+        }
+
+        console.log(`[DASHBOARD] Fetching for UID: ${uid} | DB: ${mongoose.connection.name}`);
         const sevenDaysAgo = daysAgo(7);
 
         // ─── Parallel Queries ─────────────────────────────────

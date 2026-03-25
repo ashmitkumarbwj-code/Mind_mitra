@@ -160,9 +160,9 @@ export default function Analytics() {
       )}
 
       {/* ── Mood Trend Graph (Discrete) ────────────── */}
-      <div className="glass-panel" style={{ padding: '32px', marginBottom: '24px' }}>
+      <div className="glass-panel animate-dashboard-refresh" key={graphData.length} style={{ padding: '32px', marginBottom: '24px' }}>
         <h2 style={{ margin: '0 0 32px 0', fontSize: '1.2rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <TrendingUp size={20} color="#818cf8" /> {`Mood Trend (Last ${graphData.length} Entries)`}
+          <TrendingUp size={20} color="#818cf8" className="animate-pulse" /> {`Mood Trend (Last ${graphData.length} Entries)`}
         </h2>
         <div style={{ height: '300px', width: '100%' }}>
           {console.log("🔥 STEP 6 — GRAPH RENDER DATA:", graphData)}
