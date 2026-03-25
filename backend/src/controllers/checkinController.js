@@ -39,55 +39,41 @@ export const submitCheckIn = async (req, res) => {
         }
 
         const isStreaming = req.headers.accept?.includes('text/event-stream');
-        console.log(`[CHECKIN] Request for UID: ${userId || 'anon'} (Stream: ${isStreaming})`);
+        console.log(`[SSE] New Request | UID: ${userId || 'anon'} | Stream: ${isStreaming}`);
 
         if (isStreaming) {
-            // 1. Setup SSE Headers
+            // 🔥 STEP 2.1 — Start SSE headers
             res.setHeader('Content-Type', 'text/event-stream');
             res.setHeader('Cache-Control', 'no-cache');
             res.setHeader('Connection', 'keep-alive');
             res.flushHeaders(); 
         }
 
-        const safeUserId = userId || `anon-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const safeUserId = userId || `user-${Date.now()}`;
 
-        if (safeUserId) {
-            upsertUser({ uid: safeUserId, email: email || null, isAnonymous: isAnonymous || false }).catch(err => {
-                console.warn('[CHECKIN] User upsert failed:', err.message);
-            });
-        }
-
-        // 2. Process AI Response
-        console.log(`[CHECKIN] Initiating AI processing for ${safeUserId}...`);
-        
-        // generateDeepChatStream handles the res.write internally IF res is provided
+        // 🔥 STEP 2.2 — Stream AI chunks & STEP 2.3 — Build fullResponse string
+        console.log(`[SSE] Initiating AI processing for ${safeUserId}...`);
         const streamTarget = isStreaming ? res : null;
+        
+        // generateDeepChatStream handles res.write internally
         const aiPayload = await generateDeepChatStream(checkinText, streamTarget, chatHistory || [], visualEmotion);
         
+        // 🔥 STEP 2.4 — Capture metadata (intent, riskLevel, sentiment)
         const riskLevelUI = aiPayload.riskLevel; 
         const finalReply = aiPayload.reply;
         const fallbackIntent = aiPayload.intent;
         const geminiSentiment = aiPayload.sentimentScore !== undefined ? aiPayload.sentimentScore : 0;
         const copingStrategy = getCopingStrategy(fallbackIntent);
 
-        // 3. Send Metadata/Response
-        if (isStreaming) {
-            res.write(`data: ${JSON.stringify({
-                done: true,
-                riskLevel: riskLevelUI,
-                intent: fallbackIntent,
-                copingStrategy,
-                empathyEcho: aiPayload.empathyEcho
-            })}\n\n`);
-        }
+        console.log(`[SSE] AI Sequence Complete. Risk: ${riskLevelUI}, Sentiment: ${geminiSentiment}`);
 
-        console.log(`[CHECKIN] Stream finished. Intent: ${fallbackIntent}, Risk: ${riskLevelUI}`);
-
-        // 4. DB Storage: Ensure save finishes before ending the request lifecycle
+        // 🔥 STEP 2.5 — AFTER stream ends: Save to DB
+        console.log(`[SSE] Persisting to MongoDB...`);
+        let savedDocId = null;
         try {
             const checkinRecord = {
                 userId: safeUserId,
-                rawMessage: text,
+                rawMessage: checkinText,
                 journalWentWell: microJournaling?.wentWell || null,
                 journalDrained: microJournaling?.drained || null,
                 sentimentScore: geminiSentiment,
@@ -97,52 +83,71 @@ export const submitCheckIn = async (req, res) => {
                 visualEmotion: visualEmotion || null
             };
 
-            console.log(`[CHECKIN] Saving to MongoDB...`);
             const saved = await saveCheckIn(checkinRecord);
-            console.log(`[CHECKIN] SUCCESS: Saved record ${saved._id}`);
+            savedDocId = saved?._id;
 
             if (riskLevelUI === 'Red') {
-                await saveAlert(safeUserId, 'RISK_RED', `High-risk detected for user: ${text}`);
-                console.log(`[ALERT] HIGH RISK alert logged for ${safeUserId}`);
+                await saveAlert(safeUserId, 'RISK_RED', `High-risk detected: ${checkinText}`);
             }
         } catch (dbError) {
-            console.error('[CHECKIN] DATABASE SAVE FAILED:', dbError.message);
-            // Optionally send an error chunk if the stream is still open, 
-            // but here we already sent 'done: true' and the client might have closed.
+            console.error('[SSE] DB SAVE ERROR:', dbError.message);
         }
 
-        // 5. Finalize Response
+        // 🔥 STEP 2.6 — Send final SSE chunk & call res.end()
         if (isStreaming) {
+            res.write(`data: ${JSON.stringify({
+                done: true,
+                riskLevel: riskLevelUI,
+                intent: fallbackIntent,
+                copingStrategy,
+                empathyEcho: aiPayload.empathyEcho,
+                dbSaved: !!savedDocId
+            })}\n\n`);
             res.end();
+            console.log(`[SSE] Stream finalized for ${safeUserId}`);
         } else {
-            // Format to match Dashboard.jsx expectation: response.data.analysis
             res.status(200).json({
                 success: true,
                 analysis: {
                     sentiment: riskLevelUI.toLowerCase(),
                     highRiskDetected: riskLevelUI === 'Red',
-                    counselorMessage: riskLevelUI === 'Red' ? "Please contact professional support" : null,
                     copingStrategies: [copingStrategy],
-                    intent: fallbackIntent
+                    dbSaved: !!savedDocId
                 }
             });
         }
-        console.log(`[CHECKIN] Request lifecycle completed for ${safeUserId}`);
-
     } catch (error) {
-        console.error('[CHECKIN] CRITICAL ERROR:', error);
-        res.write(`data: ${JSON.stringify({ text: "I'm having trouble processing your check-in. Please try again in a moment." })}\n\n`);
-        res.write(`data: ${JSON.stringify({ done: true, riskLevel: "Amber", intent: "stress" })}\n\n`);
-        res.end();
+        console.error('[SSE] FATAL CONTROLLER ERROR:', error);
+        if (!res.headersSent) {
+            if (req.headers.accept?.includes('text/event-stream')) {
+                res.write(`data: ${JSON.stringify({ text: "Internal error processing request.", done: true })}\n\n`);
+                res.end();
+            } else {
+                res.status(500).json({ error: 'Internal system error' });
+            }
+        }
     }
 };
 
 export const getHistory = async (req, res) => {
     try {
         const userId = req.query.userId || 'anonymous';
+        
+        console.log(`[HISTORY] Fetching records for UID: ${userId}`);
+        
         const history = await getRecentCheckIns(userId);
-        res.status(200).json({ data: history });
+        
+        console.log(`[HISTORY] Data fetched: ${history.length} entries`);
+        if (history.length > 0) {
+            console.log("[HISTORY] Sample sentiment:", history[0].sentimentScore);
+        }
+
+        res.status(200).json({ 
+            success: true,
+            data: history 
+        });
     } catch (error) {
+        console.error('[HISTORY] FAILED:', error);
         res.status(500).json({ error: 'Failed to fetch history' });
     }
 };

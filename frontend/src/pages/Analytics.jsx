@@ -36,36 +36,62 @@ const CustomTooltip = ({ active, payload }) => {
 export default function Analytics() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [graphData, setGraphData] = useState([]);
 
-  const fetchDashboard = async (isBackground = false) => {
+  // 🔥 STEP 5 — FIX FRONTEND DATA FETCH
+  const fetchData = async (isBackground = false) => {
     if (!currentUser) return;
     if (!isBackground) setLoading(true);
     try {
       console.log(`[ANALYTICS] Fetching data for UID: ${currentUser.uid}`);
-      const res = await axios.get(`${API_BASE}/api/v1/dashboard/user?userId=${currentUser.uid}&_t=${Date.now()}`);
-      console.log('[ANALYTICS] API Response Data:', res.data.data);
-      setData(res.data.data);
+      
+      // Call both APIs: stats for dashboard and history for the graph
+      const [statsRes, historyRes] = await Promise.all([
+        axios.get(`${API_BASE}/api/v1/dashboard/user?userId=${currentUser.uid}&_t=${Date.now()}`),
+        axios.get(`${API_BASE}/api/v1/checkin/history?userId=${currentUser.uid}&_t=${Date.now()}`)
+      ]);
+      
+      const dashboardData = statsRes.data.data;
+      const historyData = historyRes.data.data || [];
+      
+      console.log('[ANALYTICS] History data fetched:', historyData);
+
+      // 🔥 STEP 5 & 6 — Map data: date and sentiment_score
+      const formattedTrend = historyData.map(item => ({
+        date: new Date(item.createdAt).toLocaleDateString(),
+        sentiment: item.sentimentScore || 0,
+        risk: item.riskLevel || 'Unknown'
+      })).reverse(); // Reverse to show chronological order
+
+      console.log("🔥 STEP 6 — GRAPH DATA (Mapped):", formattedTrend);
+
+      // 🔥 STEP 8 — Ensure NEW array update
+      setGraphData([...formattedTrend]);
+      setData(dashboardData);
+      
     } catch (err) {
-      console.error('Dashboard fetch failed', err);
+      console.error('[ANALYTICS] Fetch error:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDashboard(false);
+    fetchData();
     
+    // 🔥 STEP 7 — FIX REAL-TIME UPDATE
+    const handler = () => {
+        console.log("[ANALYTICS] checkin-complete received. Refreshing graph...");
+        fetchData(true);
+    };
+
     const syncChannel = new BroadcastChannel('mindmitra_sync');
-    const onRefresh = () => fetchDashboard(true);
-    
-    syncChannel.onmessage = onRefresh;
-    window.addEventListener('checkin-complete', onRefresh);
+    syncChannel.onmessage = handler;
+    window.addEventListener('checkin-complete', handler);
     
     return () => {
       syncChannel.close();
-      window.removeEventListener('checkin-complete', onRefresh);
+      window.removeEventListener('checkin-complete', handler);
     };
   }, [currentUser]);
 
@@ -136,11 +162,12 @@ export default function Analytics() {
       {/* ── Mood Trend Graph (Discrete) ────────────── */}
       <div className="glass-panel" style={{ padding: '32px', marginBottom: '24px' }}>
         <h2 style={{ margin: '0 0 32px 0', fontSize: '1.2rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <TrendingUp size={20} color="#818cf8" /> Mood Trend (Last {data.riskTrend?.length || 0} Entries)
+          <TrendingUp size={20} color="#818cf8" /> {`Mood Trend (Last ${graphData.length} Entries)`}
         </h2>
         <div style={{ height: '300px', width: '100%' }}>
+          {console.log("🔥 STEP 6 — GRAPH RENDER DATA:", graphData)}
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data.riskTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <LineChart data={graphData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
               <XAxis 
                 dataKey="date" 
@@ -153,18 +180,18 @@ export default function Analytics() {
                 tickLine={false}
               />
               <YAxis 
-                domain={[0, 2]} 
-                ticks={[0, 1, 2]} 
-                tickFormatter={(val) => val === 2 ? 'Green' : val === 1 ? 'Amber' : 'Red'}
-                tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
-                width={70}
+                domain={[-1, 1]} 
+                ticks={[-1, 0, 1]} 
+                tickFormatter={(val) => val === 1 ? 'Positive' : val === 0 ? 'Neutral' : 'Negative'}
+                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500 }}
+                width={80}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip content={<CustomTooltip />} />
               <Line 
                 type="monotone" 
-                dataKey="level" 
+                dataKey="sentiment" 
                 stroke="#6366f1" 
                 strokeWidth={4}
                 dot={(props) => {

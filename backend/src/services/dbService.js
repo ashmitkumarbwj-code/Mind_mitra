@@ -100,6 +100,8 @@ export const getInactiveUsers = async (hoursInactive) => {
 // ─── CheckIn Operations ─────────────────────────────────────
 export const saveCheckIn = async (data) => {
     try {
+        console.log("[DB] Saving to MongoDB:", data);
+        
         const doc = await CheckIn.create({
             userId: data.userId,
             rawMessage: data.rawMessage,
@@ -111,6 +113,8 @@ export const saveCheckIn = async (data) => {
             aiResponse: data.aiResponse,
             visualEmotion: data.visualEmotion,
         });
+
+        console.log("[DB] Saved document SUCCESS ✅:", doc._id);
         return doc.toObject();
     } catch (err) {
         console.error('[DB] Error saving check-in:', err.message);
