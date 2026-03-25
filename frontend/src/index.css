@@ -68,6 +68,11 @@ body::after {
   width: 100%;
   position: relative;
   z-index: 1;
+  /* ✨ SIMPLE HOVERING BUBBLES */
+  background: 
+    radial-gradient(120px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(139, 92, 246, 0.1), transparent 80%),
+    radial-gradient(40px circle at calc(var(--mouse-x, 50%) + 30px) calc(var(--mouse-y, 50%) - 40px), rgba(236, 72, 153, 0.08), transparent 70%),
+    radial-gradient(30px circle at calc(var(--mouse-x, 50%) - 50px) calc(var(--mouse-y, 50%) + 20px), rgba(59, 130, 246, 0.08), transparent 70%);
 }
 
 @keyframes breatheAuroras {
