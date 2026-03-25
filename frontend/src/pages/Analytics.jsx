@@ -1,20 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, BarChart, Bar
+  PieChart, Pie, Cell, BarChart, Bar, AreaChart, Area
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
   TrendingUp, AlertCircle, ShieldAlert, HeartPulse, 
   Flame, CalendarCheck, MessageSquare, Activity,
-  Smile, Meh, Frown, RefreshCw, WifiOff
+  Smile, Meh, Frown, RefreshCw, WifiOff, Zap, Sparkles, Target
 } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const RISK_COLORS = { Green: '#34d399', Amber: '#fbbf24', Red: '#f87171' };
+const RISK_COLORS = { 
+  Green: '#10b981', 
+  Amber: '#f59e0b', 
+  Red: '#ef4444' 
+};
+
 const EMOTION_COLORS = ['#818cf8', '#f472b6', '#34d399', '#fbbf24', '#60a5fa', '#fb923c'];
 
 const CustomTooltip = ({ active, payload }) => {
@@ -22,10 +27,10 @@ const CustomTooltip = ({ active, payload }) => {
     const risk = payload[0].payload.risk;
     const date = new Date(payload[0].payload.date).toLocaleDateString('en', { month: 'short', day: 'numeric', hour: '2-digit' });
     return (
-      <div style={{ background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px 14px' }}>
-        <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.75rem' }}>{date}</p>
-        <p style={{ margin: '4px 0 0 0', color: RISK_COLORS[risk], fontWeight: 700, fontSize: '1rem' }}>
-          {risk} Level
+      <div className="glass-panel" style={{ background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px 16px', borderRadius: '16px' }}>
+        <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{date}</p>
+        <p style={{ margin: '6px 0 0 0', color: RISK_COLORS[risk], fontWeight: 800, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Zap size={16} fill={RISK_COLORS[risk]} /> {risk} Risk
         </p>
       </div>
     );
@@ -48,8 +53,6 @@ export default function Analytics() {
         setError(null);
     }
     try {
-      console.log(`[ANALYTICS] Fetching data for UID: ${currentUser.uid}`);
-      
       const [statsRes, historyRes] = await Promise.all([
         axios.get(`${API_BASE}/api/v1/dashboard/user?userId=${currentUser.uid}&_t=${Date.now()}`),
         axios.get(`${API_BASE}/api/v1/checkin/history?userId=${currentUser.uid}&_t=${Date.now()}`)
@@ -69,7 +72,7 @@ export default function Analytics() {
       
     } catch (err) {
       console.error('[ANALYTICS] Fetch error:', err);
-      if (!isBackground) setError("Unable to connect to your health center. Please check your internet or retry.");
+      if (!isBackground) setError("System link disrupted. Verify VITE_API_URL in deployment.");
     } finally {
       setLoading(false);
     }
@@ -77,16 +80,10 @@ export default function Analytics() {
 
   useEffect(() => {
     fetchData();
-    
-    const handler = () => {
-        console.log("[ANALYTICS] checkin-complete received. Refreshing graph...");
-        fetchData(true);
-    };
-
+    const handler = () => fetchData(true);
     const syncChannel = new BroadcastChannel('mindmitra_sync');
     syncChannel.onmessage = handler;
     window.addEventListener('checkin-complete', handler);
-    
     return () => {
       syncChannel.close();
       window.removeEventListener('checkin-complete', handler);
@@ -94,173 +91,203 @@ export default function Analytics() {
   }, [currentUser]);
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
-      <HeartPulse size={40} color="#818cf8" style={{ animation: 'pulse 1.5s ease-in-out infinite' }} />
-      <div className="text-gradient" style={{ fontSize: '1.1rem' }}>Updating your mood trends...</div>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+      <div className="breathing-circle" style={{ width: '120px', height: '120px' }}>
+        <Sparkles size={40} color="#818cf8" />
+      </div>
+      <div className="text-gradient" style={{ fontSize: '1.4rem', letterSpacing: '2px' }}>CALIBRATING INSIGHTS</div>
     </div>
   );
 
   if (error) return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
-        <WifiOff size={48} color="#f87171" style={{ marginBottom: '16px' }} />
-        <h2 style={{ color: '#f87171', marginBottom: '8px' }}>Connection Issue</h2>
-        <p style={{ color: '#94a3b8', maxWidth: '400px' }}>{error}</p>
-        <button onClick={() => fetchData()} style={{ marginTop: '24px', background: 'rgba(248, 113, 113, 0.1)', color: '#f87171', border: '1px solid #f8717133', padding: '10px 24px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <RefreshCw size={16} /> Retry Sync
-        </button>
+        <div className="glass-card-trendy" style={{ padding: '40px', maxWidth: '500px' }}>
+            <WifiOff size={60} color="#f87171" style={{ marginBottom: '24px', opacity: 0.8 }} />
+            <h2 className="risk-red" style={{ fontSize: '2rem', marginBottom: '12px' }}>Connection Failure</h2>
+            <p style={{ color: '#94a3b8', fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '32px' }}>{error}</p>
+            <button className="button-primary" onClick={() => fetchData()} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <RefreshCw size={20} /> SYNC SYSTEM
+            </button>
+        </div>
      </div>
   );
 
   if (!data || data.checkinCount === 0) return (
      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
-        <MessageSquare size={48} color="#475569" style={{ marginBottom: '16px' }} />
-        <h2 style={{ color: '#f8fafc', marginBottom: '8px' }}>No Data Yet</h2>
-        <p style={{ color: '#94a3b8', maxWidth: '400px' }}>Start a conversation with MindMitra to see your emotional trends and insights here.</p>
-        <button onClick={() => navigate('/checkin')} style={{ marginTop: '24px', background: '#818cf8', color: 'white', padding: '10px 24px', borderRadius: '12px', border: 'none', cursor: 'pointer' }}>Start Chatting</button>
+        <div className="glass-card-trendy animate-float" style={{ padding: '60px', maxWidth: '600px' }}>
+            <div style={{ background: 'rgba(129, 140, 248, 0.1)', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                <MessageSquare size={40} color="#818cf8" />
+            </div>
+            <h2 style={{ fontSize: '2.5rem', marginBottom: '16px', background: 'linear-gradient(to right, #fff, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Your Story Starts Here</h2>
+            <p style={{ color: '#94a3b8', fontSize: '1.1rem', marginBottom: '40px' }}>Your emotional journey is waiting to be mapped. Have your first conversation with MindMitra to unlock these analytics.</p>
+            <button className="button-primary" onClick={() => navigate('/checkin')} style={{ padding: '16px 40px', fontSize: '1.2rem' }}>START FIRST CHECK-IN</button>
+        </div>
      </div>
   );
 
-  const riskColor = RISK_COLORS[data.currentRisk] || '#34d399';
+  const riskColor = RISK_COLORS[data.currentRisk] || '#10b981';
   const RiskIcon = data.currentRisk === 'Red' ? Frown : data.currentRisk === 'Amber' ? Meh : Smile;
 
   return (
-    <div style={{ minHeight: '100vh', padding: '40px 20px', maxWidth: '1100px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', padding: '60px 20px', maxWidth: '1200px', margin: '0 auto' }}>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{ background: `${riskColor}15`, padding: '16px', borderRadius: '18px', border: `1px solid ${riskColor}33` }}>
-            <RiskIcon size={32} color={riskColor} />
-          </div>
-          <div>
-            <p style={{ margin: 0, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Dominant Emotion</p>
-            <h2 style={{ margin: '4px 0 0 0', fontSize: '1.6rem', color: riskColor }}>{data.currentRisk}</h2>
-          </div>
-        </div>
-
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <p style={{ margin: 0, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Total Check-Ins</p>
-          <h2 style={{ margin: '4px 0 0 0', fontSize: '2rem', color: '#f8fafc' }}>{data.checkinCount}</h2>
-        </div>
-
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div>
-              <p style={{ margin: 0, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Consistency Score</p>
-              <h2 style={{ margin: '4px 0 0 0', fontSize: '1.6rem', color: '#818cf8' }}>{data.streak} Day Streak</h2>
+      {/* --- Top Header Card --- */}
+      <div className="glass-card-trendy animate-slide-up" style={{ padding: '40px', marginBottom: '40px', display: 'flex', flexWrap: 'wrap', gap: '40px', alignItems: 'center', justifyContent: 'space-between', background: `linear-gradient(135deg, rgba(255,255,255,0.03) 0%, ${riskColor}08 100%)` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+            <div className="animate-float" style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', inset: '-10px', background: riskColor, filter: 'blur(20px)', opacity: 0.2, borderRadius: '50%' }}></div>
+                <div style={{ background: `${riskColor}20`, padding: '24px', borderRadius: '30px', border: `2px solid ${riskColor}40`, position: 'relative' }}>
+                    <RiskIcon size={48} color={riskColor} />
+                </div>
             </div>
-            <Flame size={28} color="#fb923c" style={{ marginLeft: 'auto' }} />
+            <div>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 700 }}>Current Mental State</p>
+                <h1 style={{ margin: '8px 0 0 0', fontSize: '3rem', color: riskColor, textShadow: `0 0 30px ${riskColor}40` }}>{data.currentRisk}</h1>
+            </div>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '40px' }}>
+            <div style={{ textAlign: 'center' }}>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>Total Insight</p>
+                <h2 style={{ margin: '5px 0 0 0', fontSize: '2.5rem', fontWeight: 800 }}>{data.checkinCount}</h2>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>Consistency</p>
+                <h2 style={{ margin: '5px 0 0 0', fontSize: '2.5rem', color: '#8b5cf6', fontWeight: 800 }}>{data.streak}d</h2>
+            </div>
         </div>
       </div>
 
-      {data.patternAlert && (
-        <div className="animate-slide-up" style={{
-          background: data.patternAlert.level === 'RED' ? 'rgba(239,68,68,0.06)' : 'rgba(251,191,36,0.06)',
-          border: `1px solid ${data.patternAlert.level === 'RED' ? '#f87171' : '#fbbf24'}33`,
-          borderRadius: '16px', padding: '20px 24px', marginBottom: '28px',
-          display: 'flex', alignItems: 'flex-start', gap: '16px',
-          boxShadow: `0 4px 20px ${data.patternAlert.level === 'RED' ? 'rgba(239,68,68,0.1)' : 'rgba(251,191,36,0.1)'}`
-        }}>
-          <AlertCircle size={24} color={data.patternAlert.level === 'RED' ? '#f87171' : '#fbbf24'} style={{ marginTop: '2px' }} />
-          <div>
-            <h3 style={{ margin: '0 0 6px 0', color: data.patternAlert.level === 'RED' ? '#f87171' : '#fbbf24', fontSize: '1.1rem' }}>
-              {data.patternAlert.title || "Mood Pattern Detected"}
-            </h3>
-            <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>{data.patternAlert.message}</p>
-          </div>
+      {/* --- Grid Layout --- */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
+        
+        {/* Main Trend Chart (Spans 8 cols) */}
+        <div className="glass-card-trendy animate-slide-up" style={{ gridColumn: 'span 8', padding: '40px', minHeight: '500px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <TrendingUp size={24} color="#818cf8" /> Emotional Trajectory
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', background: 'rgba(255,255,255,0.05)', padding: '6px 16px', borderRadius: '20px' }}>
+                    REAL-TIME SYNC ACTIVE
+                </div>
+            </div>
+            
+            <div style={{ height: '350px', width: '100%' }}>
+                {graphData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={graphData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorSentiment" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                            <XAxis 
+                                dataKey="date" 
+                                tickFormatter={(str) => new Date(str).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                                tick={{ fill: '#475569', fontSize: 11 }}
+                                axisLine={false}
+                                tickLine={false}
+                            />
+                            <YAxis domain={[-1.1, 1.1]} hide />
+                            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }} />
+                            <Area 
+                                type="monotone" 
+                                dataKey="sentiment" 
+                                stroke="#818cf8" 
+                                strokeWidth={4}
+                                fillOpacity={1}
+                                fill="url(#colorSentiment)"
+                                animationDuration={2000}
+                                dot={(props) => {
+                                    const risk = props.payload.risk;
+                                    return <circle cx={props.cx} cy={props.cy} r={5} fill={RISK_COLORS[risk]} stroke="#111" strokeWidth={2} />
+                                }}
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#475569', gap: '20px' }}>
+                        <div style={{ width: '200px', height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                            <div style={{ width: '40%', height: '100%', background: '#818cf8', borderRadius: '10px' }}></div>
+                        </div>
+                        Analysis requires more interaction data.
+                    </div>
+                )}
+            </div>
         </div>
+
+        {/* Emotion Mix (Spans 4 cols) */}
+        <div className="glass-card-trendy animate-slide-up" style={{ gridColumn: 'span 4', padding: '40px' }}>
+            <h3 style={{ margin: '0 0 30px 0', fontSize: '1.3rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Sparkles size={20} color="#f472b6" /> Emotion Mix
+            </h3>
+            <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                    <Pie data={data.emotionStats || []} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={8} dataKey="value" nameKey="name">
+                        {(data.emotionStats || []).map((_, i) => <Cell key={i} fill={EMOTION_COLORS[i % EMOTION_COLORS.length]} stroke="none" />)}
+                    </Pie>
+                    <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' }} />
+                </PieChart>
+            </ResponsiveContainer>
+            <div style={{ marginTop: '20px', display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
+                {(data.emotionStats || []).map((item, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#94a3b8' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: EMOTION_COLORS[i % EMOTION_COLORS.length] }}></div>
+                        {item.name}
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        {/* Intent Distribution (Spans 12 cols, wide view) */}
+        <div className="glass-card-trendy animate-slide-up" style={{ gridColumn: 'span 12', padding: '40px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Target size={22} color="#34d399" /> Intent Resonance
+                </h3>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>Mapping psychological triggers across sessions</p>
+            </div>
+            
+            <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={data.emotionStats || []} margin={{ top: 0, right: 30, left: 0, bottom: 0 }} barGap={20}>
+                    <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis hide />
+                    <Tooltip cursor={{ fill: 'rgba(255,255,255,0.03)' }} contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px' }} />
+                    <Bar dataKey="value" radius={[10, 10, 10, 10]} barSize={60}>
+                        {(data.emotionStats || []).map((_, i) => <Cell key={i} fill={`url(#barGradient${i})`} />)}
+                    </Bar>
+                    <defs>
+                        {(data.emotionStats || []).map((_, i) => (
+                            <linearGradient key={i} id={`barGradient${i}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor={EMOTION_COLORS[i % EMOTION_COLORS.length]} stopOpacity={0.8} />
+                                <stop offset="100%" stopColor={EMOTION_COLORS[i % EMOTION_COLORS.length]} stopOpacity={0.2} />
+                            </linearGradient>
+                        ))}
+                    </defs>
+                </BarChart>
+            </ResponsiveContainer>
+        </div>
+
+      </div>
+
+      {/* --- Pattern Alert Floating --- */}
+      {data.patternAlert && (
+          <div className="animate-slide-up" style={{ marginTop: '40px', position: 'relative' }}>
+             <div style={{ position: 'absolute', inset: 0, background: data.patternAlert.level === 'RED' ? '#ef4444' : '#f59e0b', filter: 'blur(40px)', opacity: 0.1, borderRadius: '32px' }}></div>
+             <div className="glass-card-trendy" style={{ padding: '30px 40px', display: 'flex', alignItems: 'center', gap: '24px', position: 'relative', border: `1px solid ${data.patternAlert.level === 'RED' ? '#ef4444' : '#f59e0b'}33` }}>
+                <div style={{ background: `${data.patternAlert.level === 'RED' ? '#ef4444' : '#f59e0b'}20`, padding: '16px', borderRadius: '20px' }}>
+                    <ShieldAlert size={30} color={data.patternAlert.level === 'RED' ? '#f87171' : '#fbbf24'} />
+                </div>
+                <div>
+                    <h4 style={{ margin: '0 0 6px 0', fontSize: '1.3rem', color: data.patternAlert.level === 'RED' ? '#f87171' : '#fbbf24' }}>{data.patternAlert.title}</h4>
+                    <p style={{ margin: 0, color: '#94a3b8', fontSize: '1.05rem', lineHeight: '1.6' }}>{data.patternAlert.message}</p>
+                </div>
+             </div>
+          </div>
       )}
 
-      <div className="glass-panel animate-dashboard-refresh" key={graphData.length} style={{ padding: '32px', marginBottom: '24px' }}>
-        <h2 style={{ margin: '0 0 32px 0', fontSize: '1.2rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <TrendingUp size={20} color="#818cf8" className="animate-pulse" /> {`Mood Trend (Last ${graphData.length} Entries)`}
-        </h2>
-        <div style={{ height: '300px', width: '100%' }}>
-          {graphData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={graphData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={(str) => {
-                    const d = new Date(str);
-                    return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
-                  }}
-                  tick={{ fill: '#64748b', fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis 
-                  domain={[-1, 1]} 
-                  ticks={[-1, 0, 1]} 
-                  tickFormatter={(val) => val === 1 ? 'Positive' : val === 0 ? 'Neutral' : 'Negative'}
-                  tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500 }}
-                  width={80}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Line 
-                  type="monotone" 
-                  dataKey="sentiment" 
-                  stroke="#6366f1" 
-                  strokeWidth={4}
-                  dot={(props) => {
-                     const risk = props.payload.risk;
-                     return (
-                       <circle 
-                         cx={props.cx} 
-                         cy={props.cy} 
-                         r={6} 
-                         fill={RISK_COLORS[risk]} 
-                         stroke="rgba(255,255,255,0.2)" 
-                         strokeWidth={2} 
-                       />
-                     );
-                  }}
-                  activeDot={{ r: 8, strokeWidth: 0 }}
-                  animationDuration={1500}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}>
-               Trend will appear after your 2nd check-in.
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-        <div className="glass-panel" style={{ padding: '28px' }}>
-          <h3 style={{ margin: '0 0 24px 0', fontSize: '1.1rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <MessageSquare size={18} color="#f472b6" /> Weekly Emotion Mix
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie data={data.emotionStats || []} cx="50%" cy="50%" innerRadius={60} outerRadius={85}
-                paddingAngle={5} dataKey="value" nameKey="name">
-                {(data.emotionStats || []).map((_, i) => <Cell key={i} fill={EMOTION_COLORS[i % EMOTION_COLORS.length]} />)}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="glass-panel" style={{ padding: '28px' }}>
-          <h3 style={{ margin: '0 0 24px 0', fontSize: '1.1rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Activity size={18} color="#34d399" /> Intent Distribution
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={data.emotionStats || []}>
-              <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis hide />
-              <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {(data.emotionStats || []).map((_, i) => <Cell key={i} fill={EMOTION_COLORS[i % EMOTION_COLORS.length]} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
     </div>
   );
 }

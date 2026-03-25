@@ -17,6 +17,11 @@
   
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
+
+  /* Trendy Additions */
+  --glow-indigo: 0 0 20px rgba(99, 102, 241, 0.4);
+  --glow-pink: 0 0 20px rgba(236, 72, 153, 0.4);
+  --glow-emerald: 0 0 20px rgba(52, 211, 153, 0.4);
 }
 
 body {
@@ -142,6 +147,32 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   position: relative;
   overflow: hidden;
+  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.glass-card-trendy {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 32px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card-trendy::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+}
+
+.glass-card-trendy:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
 }
 
 .button-primary::after {
