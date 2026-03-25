@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HeartPulse, ShieldCheck, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,10 +6,16 @@ import AuthModal from '../components/auth/AuthModal';
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { loginWithGoogle } = useAuth();
+  const { currentUser, loginWithGoogle } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [loading, setLoading] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/checkin', { replace: true });
+    }
+  }, [currentUser, navigate]);
 
   const handleGoogle = async () => {
     setLoading('google');
