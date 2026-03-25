@@ -36,7 +36,9 @@ const CustomTooltip = ({ active, payload }) => {
 export default function Analytics() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const [data, setData] = useState(null);
   const [graphData, setGraphData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // 🔥 STEP 5 — FIX FRONTEND DATA FETCH
   const fetchData = async (isBackground = false) => {
