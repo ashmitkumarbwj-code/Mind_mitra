@@ -35,7 +35,7 @@ export default function NavBar() {
       zIndex: 999,
       background: 'rgba(15, 23, 42, 0.6)',
       backdropFilter: 'blur(20px)',
-      -webkit-backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
       border: '1px solid rgba(255,255,255,0.08)',
       borderRadius: '24px',
       padding: '8px 20px',

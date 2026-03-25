@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HeartPulse, ShieldCheck, Sparkles, ArrowRight, Github } from 'lucide-react';
+import { HeartPulse, ShieldCheck, Sparkles, ArrowRight, Github, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from '../components/auth/AuthModal';
 
