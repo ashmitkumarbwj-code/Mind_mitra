@@ -199,3 +199,21 @@ export const resolveAlert = async (alertId) => {
         throw err;
     }
 };
+export const getGlobalStats = async () => {
+    try {
+        const [totalUsers, totalCheckIns, activeAlerts] = await Promise.all([
+            User.countDocuments(),
+            CheckIn.countDocuments(),
+            Alert.countDocuments({ status: 'OPEN' })
+        ]);
+
+        return {
+            totalUsers,
+            totalCheckIns,
+            activeAlerts
+        };
+    } catch (err) {
+        console.error('[DB] Error fetching global stats:', err.message);
+        return { totalUsers: 0, totalCheckIns: 0, activeAlerts: 0 };
+    }
+};
