@@ -129,11 +129,14 @@ export const getUserDashboard = async (req, res) => {
                 topIntent,
                 burnoutScore,
                 activitiesCompleted: checkinCount,
-                riskTrend: last30Entries.map(c => ({
-                    date: c.createdAt,
-                    level: c.riskLevel === 'Green' ? 2 : c.riskLevel === 'Amber' ? 1 : 0,
-                    risk: c.riskLevel
-                })).reverse(),
+                riskTrend: (last30Entries || []).map(c => {
+                    const level = c.riskLevel === 'Green' ? 2 : (c.riskLevel === 'Amber' ? 1 : 0);
+                    return {
+                        date: c.createdAt,
+                        level,
+                        risk: c.riskLevel || 'Unknown'
+                    };
+                }).reverse(),
                 alerts,
                 user
             }

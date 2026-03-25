@@ -31,19 +31,23 @@ export const updateContact = async (req, res) => {
 
 export const submitCheckIn = async (req, res) => {
     try {
-        const { userId, email, isAnonymous, text, microJournaling, chatHistory, visualEmotion } = req.body;
+        const { userId, email, isAnonymous, text, feeling, microJournaling, chatHistory, visualEmotion } = req.body;
+        const checkinText = text || feeling;
         
-        if (!text) {
-            return res.status(400).json({ error: 'Check-in text is required' });
+        if (!checkinText) {
+            return res.status(400).json({ error: 'Check-in text/feeling is required' });
         }
 
-        console.log(`[CHECKIN] Received request for UID: ${userId || 'anon'}`);
+        const isStreaming = req.headers.accept?.includes('text/event-stream');
+        console.log(`[CHECKIN] Request for UID: ${userId || 'anon'} (Stream: ${isStreaming})`);
 
-        // 1. Setup SSE Headers for Real-Time Streaming
-        res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
-        res.flushHeaders(); 
+        if (isStreaming) {
+            // 1. Setup SSE Headers
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.flushHeaders(); 
+        }
 
         const safeUserId = userId || `anon-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -53,9 +57,12 @@ export const submitCheckIn = async (req, res) => {
             });
         }
 
-        // 2. Stream AI Response from Gemini
-        console.log(`[CHECKIN] Initiating Gemini stream for ${safeUserId}...`);
-        const aiPayload = await generateDeepChatStream(text, res, chatHistory || [], visualEmotion);
+        // 2. Process AI Response
+        console.log(`[CHECKIN] Initiating AI processing for ${safeUserId}...`);
+        
+        // generateDeepChatStream handles the res.write internally IF res is provided
+        const streamTarget = isStreaming ? res : null;
+        const aiPayload = await generateDeepChatStream(checkinText, streamTarget, chatHistory || [], visualEmotion);
         
         const riskLevelUI = aiPayload.riskLevel; 
         const finalReply = aiPayload.reply;
@@ -63,14 +70,16 @@ export const submitCheckIn = async (req, res) => {
         const geminiSentiment = aiPayload.sentimentScore !== undefined ? aiPayload.sentimentScore : 0;
         const copingStrategy = getCopingStrategy(fallbackIntent);
 
-        // 3. Send Final Metadata via SSE
-        res.write(`data: ${JSON.stringify({
-            done: true,
-            riskLevel: riskLevelUI,
-            intent: fallbackIntent,
-            copingStrategy,
-            empathyEcho: aiPayload.empathyEcho
-        })}\n\n`);
+        // 3. Send Metadata/Response
+        if (isStreaming) {
+            res.write(`data: ${JSON.stringify({
+                done: true,
+                riskLevel: riskLevelUI,
+                intent: fallbackIntent,
+                copingStrategy,
+                empathyEcho: aiPayload.empathyEcho
+            })}\n\n`);
+        }
 
         console.log(`[CHECKIN] Stream finished. Intent: ${fallbackIntent}, Risk: ${riskLevelUI}`);
 
@@ -102,8 +111,22 @@ export const submitCheckIn = async (req, res) => {
             // but here we already sent 'done: true' and the client might have closed.
         }
 
-        // 5. Finalize the SSE connection
-        res.end();
+        // 5. Finalize Response
+        if (isStreaming) {
+            res.end();
+        } else {
+            // Format to match Dashboard.jsx expectation: response.data.analysis
+            res.status(200).json({
+                success: true,
+                analysis: {
+                    sentiment: riskLevelUI.toLowerCase(),
+                    highRiskDetected: riskLevelUI === 'Red',
+                    counselorMessage: riskLevelUI === 'Red' ? "Please contact professional support" : null,
+                    copingStrategies: [copingStrategy],
+                    intent: fallbackIntent
+                }
+            });
+        }
         console.log(`[CHECKIN] Request lifecycle completed for ${safeUserId}`);
 
     } catch (error) {
