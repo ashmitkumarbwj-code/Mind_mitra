@@ -16,16 +16,32 @@ export const connectDB = async () => {
     try {
         const uri = process.env.MONGODB_URI;
         if (!uri) {
-            console.error('[DB] MONGODB_URI not set in .env. Skipping database connection.');
+            console.error('[DB] CRITICAL: MONGODB_URI not found in .env');
             return;
         }
-        console.log('[DB] Connecting to MongoDB Atlas...');
+        
+        console.log('[DB] Attempting connection to:', uri.split('@')[1] || 'Cluster');
+        
         await mongoose.connect(uri, {
-            serverSelectionTimeoutMS: 5000, // 5 seconds timeout
+            serverSelectionTimeoutMS: 8000, 
+            heartbeatFrequencyMS: 10000,
         });
-        console.log('[DB] Connected to MongoDB Atlas ✅');
+
+        console.log('[DB] Successfully connected to MongoDB Atlas ✅');
+        
+        mongoose.connection.on('error', err => {
+            console.error('[DB] Runtime Connection Error:', err.message);
+        });
+
+        mongoose.connection.on('disconnected', () => {
+            console.warn('[DB] Disconnected from MongoDB');
+        });
+
     } catch (err) {
-        console.error('[DB] MongoDB connection failed:', err.message);
+        console.error('[DB] CONNECTION FAILED ❌');
+        console.error('[DB] Error Details:', err.message);
+        console.error('[DB] Check: 1) IP Whitelist in Atlas  2) Network Firewall  3) URI Credentials');
+        // Do not crash, but ensure logs are very visible
     }
 };
 

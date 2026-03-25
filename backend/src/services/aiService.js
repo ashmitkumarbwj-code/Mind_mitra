@@ -57,7 +57,7 @@ IMPORTANT CONSTRAINTS:
 - Output EXACTLY two sections separated by ===METADATA===:
   1. Your conversational response.
   2. Then: ===METADATA===
-  3. Then JSON: {"risk_level": "Green|Amber|Red", "intent": "sadness|anxiety|crisis|neutral|stress|burnout"}
+  3. Then JSON: {"risk_level": "Green|Amber|Red", "intent": "sadness|anxiety|crisis|neutral|stress|burnout", "sentiment_score": float between -1.0 and 1.0}
 `;
 
 // ─── Main Streaming Export ─────────────────────────────────────────
@@ -117,7 +117,7 @@ export const generateDeepChatStream = async (userMessage, res, chatHistory = [],
         }
 
         // Parse Metadata from delimited JSON block
-        let parsed = { risk_level: "Green", intent: "neutral" };
+        let parsed = { risk_level: "Green", intent: "neutral", sentiment_score: 1.0 };
         try {
             const jsonMatch = metadataString.match(/\{[\s\S]*\}/);
             if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
@@ -135,6 +135,7 @@ export const generateDeepChatStream = async (userMessage, res, chatHistory = [],
             reply: textResponse.trim(),
             riskLevel: parsed.risk_level || "Green",
             intent: parsed.intent || "neutral",
+            sentimentScore: parsed.sentiment_score !== undefined ? parsed.sentiment_score : 0,
             empathyEcho
         };
 

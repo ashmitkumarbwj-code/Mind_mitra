@@ -56,8 +56,8 @@ export const submitCheckIn = async (req, res) => {
         const finalReply = aiPayload.reply;
         const fallbackIntent = aiPayload.intent;
 
-        // 2. Fallback Sentiment for the numerical dashboard trend charts
-        const fallbackSentiment = riskLevelUI === "Amber" ? -1 : (riskLevelUI === "Red" ? -2 : 1);
+        // 2. Use Gemini Sentiment if available, else zero
+        const geminiSentiment = aiPayload.sentimentScore !== undefined ? aiPayload.sentimentScore : 0;
         const copingStrategy = getCopingStrategy(fallbackIntent);
 
         // 3. Finalize Stream with UI Action Metadata
@@ -77,7 +77,7 @@ export const submitCheckIn = async (req, res) => {
                 raw_message: text,
                 journal_went_well: microJournaling?.wentWell || null,
                 journal_drained: microJournaling?.drained || null,
-                sentiment_score: fallbackSentiment,
+                sentiment_score: geminiSentiment,
                 intent: fallbackIntent,
                 risk_level: riskLevelUI,
                 ai_response: finalReply,
