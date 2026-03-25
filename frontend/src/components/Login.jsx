@@ -35,9 +35,10 @@ export default function Login() {
   };
 
   return (
-    <div className="glass-card">
-      <h1 className="title">Mind Mitra</h1>
-      <p className="subtitle">Your daily mental health companion</p>
+    <div className="login-page-wrapper">
+      <div className="glass-card login-card">
+        <h1 className="title">Mind Mitra</h1>
+        <p className="subtitle">Your daily mental health companion</p>
 
       {error && <div style={{ color: '#EF4444', marginBottom: '1rem', textAlign: 'center', fontSize: '0.875rem' }}>{error}</div>}
 
@@ -86,6 +87,7 @@ export default function Login() {
         </svg>
         Continue with Google
       </button>
+    </div>
     </div>
   );
 }

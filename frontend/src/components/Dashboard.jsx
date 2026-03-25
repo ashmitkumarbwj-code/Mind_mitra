@@ -1,116 +1,286 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getAuth, signOut } from 'firebase/auth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Send, Heart, AlertTriangle, Smile, Meh, Frown, BarChart2 } from 'lucide-react';
+import { 
+  Send, 
+  AlertTriangle, 
+  Smile, 
+  Meh, 
+  Frown, 
+  BarChart2, 
+  Bot, 
+  Mic, 
+  LogOut, 
+  MessageSquare, 
+  Users, 
+  Settings,
+  Zap
+} from 'lucide-react';
 
 export default function Dashboard({ user }) {
-  const [feeling, setFeeling] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, [user.uid]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
+
+  const fetchHistory = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/history/${user.uid}`);
+      const history = response.data;
+      
+      const formattedMessages = [];
+      history.forEach(item => {
+        formattedMessages.push({
+          id: `user-${item.timestamp}`,
+          role: 'user',
+          content: item.feeling,
+          timestamp: item.timestamp
+        });
+        
+        if (item.analysis) {
+          formattedMessages.push({
+            id: `ai-${item.timestamp}`,
+            role: 'ai',
+            content: item.analysis,
+            timestamp: item.timestamp
+          });
+        }
+      });
+      
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error("Failed to fetch history:", error);
+    }
+  };
 
   const handleLogout = () => {
     const auth = getAuth();
     signOut(auth);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!feeling.trim()) return;
+  const handleSend = async (e) => {
+    if (e) e.preventDefault();
+    if (!input.trim() || loading) return;
 
+    const userMessageText = input;
+    setInput('');
+    
+    const newUserMessage = {
+      id: Date.now(),
+      role: 'user',
+      content: userMessageText,
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, newUserMessage]);
+    
     setLoading(true);
+    setIsTyping(true);
+
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/checkin`, {
         userId: user.uid,
-        feeling: feeling
+        feeling: userMessageText
       });
-      setFeedback(response.data.analysis);
-      setFeeling('');
+      
+      const aiResponse = {
+        id: Date.now() + 1,
+        role: 'ai',
+        content: response.data.analysis,
+        timestamp: new Date().toISOString()
+      };
+      
+      setMessages(prev => [...prev, aiResponse]);
     } catch (error) {
       console.error("Failed to submit check-in:", error);
-      alert("Error submitting your response. Please ensure the backend server is running.");
+      const errorMessage = {
+        id: Date.now() + 1,
+        role: 'ai',
+        content: { sentiment: 'red', error: true, counselorMessage: "I'm having trouble connecting. Please try again later." },
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setLoading(false);
+      setIsTyping(false);
     }
+  };
+
+  const startListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice recognition is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(prev => prev + (prev ? ' ' : '') + transcript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
   };
 
   const getSentimentIcon = (sentiment) => {
     switch(sentiment) {
-      case 'green': return <Smile size={24} />;
-      case 'amber': return <Meh size={24} />;
-      case 'red': return <Frown size={24} />;
-      default: return <Heart size={24} />;
+      case 'green': return <Smile size={18} />;
+      case 'amber': return <Meh size={18} />;
+      case 'red': return <Frown size={18} />;
+      default: return <Bot size={18} />;
     }
   };
 
   return (
-    <div className="glass-card dashboard-card">
-      <div className="header-row">
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>Welcome, {user.email?.split('@')[0] || "User"}</h2>
-          <p style={{ color: 'var(--text-muted)' }}>Daily Check-In</p>
-        </div>
-        <button className="btn-logout" onClick={handleLogout}>Log Out</button>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label style={{ fontSize: '1.25rem', color: '#fff', marginBottom: '0.75rem' }}>How are you feeling today?</label>
-          <textarea 
-            className="input-field" 
-            placeholder="Share your thoughts, feelings, or whatever is on your mind..."
-            value={feeling}
-            onChange={(e) => setFeeling(e.target.value)}
-          />
+    <div className="app-container">
+      {/* Top Navigation */}
+      <nav className="top-nav">
+        <div className="nav-left">
+          <div style={{ color: '#818CF8' }}><Zap size={24} fill="#818CF8" /></div>
+          <span className="logo-text">MindMitra</span>
         </div>
         
-        <button 
-          type="submit" 
-          className="btn-primary" 
-          style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-          disabled={loading || !feeling.trim()}
-        >
-          {loading ? 'Analyzing...' : <>Submit Check-In <Send size={18} /></>}
-        </button>
-      </form>
-
-      {feedback && (
-        <div className={`feedback-box sentiment-${feedback.sentiment}`}>
-          <div className="feedback-title">
-            {getSentimentIcon(feedback.sentiment)}
-            {feedback.sentiment} Sentiment
-          </div>
-          
-          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>Here are some actionable strategies for you today:</p>
-          
-          <ul className="strategy-list">
-            {feedback.copingStrategies?.map((strategy, idx) => (
-              <li key={idx}>{strategy}</li>
-            ))}
-          </ul>
-
-          {feedback.highRiskDetected && feedback.counselorMessage && (
-             <div className="counselor-alert">
-              <AlertTriangle style={{ flexShrink: 0 }} />
-              <div>
-                <strong>Professional Support Recommended</strong>
-                <p style={{ marginTop: '0.25rem', fontSize: '0.875rem' }}>{feedback.counselorMessage}</p>
-              </div>
-            </div>
-          )}
+        <div className="nav-center">
+          <button className="nav-link analytics" onClick={() => navigate('/analytics')}>
+            <BarChart2 size={18} /> Analytics
+          </button>
         </div>
-      )}
 
-      <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-        <button 
-          onClick={() => navigate('/analytics')}
-          className="btn-primary" 
-          style={{ background: 'linear-gradient(135deg, #10B981, #059669)', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', width: 'auto', padding: '0.75rem 1.5rem' }}
-        >
-          <BarChart2 size={18} /> View Analytics Dashboard
-        </button>
-      </div>
+        <div className="nav-right">
+          <div className="user-profile">
+            <span>{user.email?.split('@')[0] || "User"}</span>
+            <div className="avatar">{user.email?.[0].toUpperCase() || "U"}</div>
+          </div>
+          <button className="btn-icon" onClick={handleLogout} title="Logout">
+            <LogOut size={18} />
+          </button>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="dashboard-main">
+        <div className="chat-container">
+          <div className="messages-list">
+            {messages.length === 0 && !isTyping && (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '4rem' }}>
+                <Bot size={64} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
+                <h3 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>Hey {user.email?.split('@')[0] || "there"}! 💙</h3>
+                <p>How are you feeling today? Take a moment — your feelings matter.</p>
+              </div>
+            )}
+            
+            {messages.map((msg) => (
+              <div key={msg.id} className={`message-wrapper ${msg.role}`}>
+                {msg.role === 'ai' && msg.content.sentiment && (
+                  <div className={`sentiment-tag ${msg.content.sentiment}`}>
+                    {getSentimentIcon(msg.content.sentiment)}
+                    {msg.content.sentiment}
+                  </div>
+                )}
+                <div className="bubble">
+                  {msg.role === 'user' ? (
+                    msg.content
+                  ) : (
+                    <div className="ai-response-content">
+                      {msg.content.error ? (
+                          <p>{msg.content.counselorMessage}</p>
+                      ) : (
+                          <>
+                              <p style={{ marginBottom: '1rem' }}>I hear you. Here are some things that might help:</p>
+                              <ul className="strategy-list" style={{ margin: 0, fontSize: '0.95rem' }}>
+                                  {msg.content.copingStrategies?.map((strategy, idx) => (
+                                  <li key={idx} style={{ marginBottom: '0.5rem' }}>{strategy}</li>
+                                  ))}
+                              </ul>
+
+                              {msg.content.highRiskDetected && msg.content.counselorMessage && (
+                                  <div className="counselor-alert" style={{ marginTop: '1rem' }}>
+                                      <AlertTriangle size={18} style={{ flexShrink: 0 }} />
+                                      <p style={{ fontSize: '0.85rem', margin: 0 }}>{msg.content.counselorMessage}</p>
+                                  </div>
+                              )}
+                          </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            
+            {isTyping && (
+              <div className="message-wrapper ai">
+                <div className="bubble">
+                  <div className="typing-indicator">
+                    <div className="typing-dot"></div>
+                    <div className="typing-dot"></div>
+                    <div className="typing-dot"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* Input Area */}
+        <form className="chat-input-wrapper" onSubmit={handleSend}>
+          <button 
+            type="button" 
+            className={`btn-icon ${isListening ? 'active' : ''}`} 
+            onClick={startListening}
+            title="Voice to Text"
+          >
+            <Mic size={20} />
+          </button>
+          <input 
+            type="text"
+            className="chat-input" 
+            placeholder="Message MindMitra..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button 
+            type="submit" 
+            className="btn-send-round"
+            disabled={!input.trim() || loading}
+          >
+            <Send size={20} />
+          </button>
+        </form>
+      </main>
     </div>
   );
 }

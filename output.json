@@ -1,0 +1,84 @@
+[
+  {
+    "_id": "69c35b914ce79c78401f4591",
+    "userId": "dVniHpvFwCYtzDpsbw4TCDeHJCN2",
+    "feeling": "Hello",
+    "timestamp": "2026-03-25T03:50:41.245Z",
+    "analysis": {
+      "sentiment": "green",
+      "copingStrategies": [
+        "Take a moment to stretch gently or stand up and move around a bit.",
+        "Practice box breathing: Inhale deeply for 4 counts, hold for 4, exhale for 4, hold for 4. Repeat a few times to center yourself."
+      ],
+      "highRiskDetected": false,
+      "counselorMessage": null
+    }
+  },
+  {
+    "_id": "69c35b794ce79c78401f4590",
+    "userId": "jTAGZo6LTAYsBAbwuf7B1v6SduZ2",
+    "feeling": "Iam very happy",
+    "timestamp": "2026-03-25T03:50:17.726Z",
+    "analysis": {
+      "sentiment": "green",
+      "copingStrategies": [
+        "Reflect on what made you feel happy today and consider how you can bring more of that into your routine.",
+        "Practice gratitude by listing three things you are thankful for right now.",
+        "Engage in a hobby or activity you truly enjoy to sustain your positive mood.",
+        "Try 'Box Breathing': Inhale slowly for 4 counts, hold your breath for 4 counts, exhale slowly for 4 counts, and hold your breath again for 4 counts. Repeat this cycle several times to maintain a sense of calm and focus."
+      ],
+      "highRiskDetected": true,
+      "counselorMessage": "It's wonderful to hear you're feeling very happy today. However, your recent check-ins, including mentioning suicidal thoughts just yesterday, indicate significant distress and rapid shifts in your emotional state. While these positive moments are important, it's crucial to have consistent support for the difficult times. We strongly urge you to reach out to a professional counselor, therapist, or a crisis helpline immediately. They can provide a safe space and expert guidance to help you navigate these intense feelings and develop long-term coping strategies. Your well-being is incredibly important."
+    }
+  },
+  {
+    "_id": "69c35b684ce79c78401f458f",
+    "userId": "jTAGZo6LTAYsBAbwuf7B1v6SduZ2",
+    "feeling": "Iam feeling lonely",
+    "timestamp": "2026-03-25T03:50:00.017Z",
+    "analysis": {
+      "sentiment": "red",
+      "copingStrategies": [
+        "Reach out to a trusted friend, family member, or someone you feel comfortable talking to. Sharing your feelings can lighten the load.",
+        "Engage in a comforting activity that usually brings you a sense of calm, like listening to gentle music, reading, or having a warm cup of tea.",
+        "Practice square breathing: Inhale slowly for a count of four, hold your breath for a count of four, exhale slowly for a count of four, and hold for a count of four before inhaling again. Repeat this several times to help regulate your nervous system.",
+        "Gentle movement can sometimes help shift your mood. Consider a short walk or some light stretching."
+      ],
+      "highRiskDetected": true,
+      "counselorMessage": "It sounds like you're going through a very challenging time, especially with the recent mention of suicidal thoughts and your current feelings of loneliness. Your well-being is incredibly important. Please know that you don't have to carry this burden alone. We strongly encourage you to reach out to a mental health professional, a crisis helpline, or a trusted support system right away. They can provide immediate and specialized support to help you navigate these intense feelings. You deserve help, and it is available."
+    }
+  },
+  {
+    "_id": "69c35b514ce79c78401f458e",
+    "userId": "jTAGZo6LTAYsBAbwuf7B1v6SduZ2",
+    "feeling": "Hello",
+    "timestamp": "2026-03-25T03:49:37.343Z",
+    "analysis": {
+      "sentiment": "amber",
+      "copingStrategies": [
+        "Take a few minutes to journal anything that comes to mind, no matter how small.",
+        "Engage in a simple sensory activity, like holding an ice cube or focusing on five things you can see, four you can touch, three you can hear, two you can smell, and one you can taste (5-4-3-2-1 grounding technique).",
+        "Go for a short walk, even just around the room, focusing on your breath and how your feet feel on the ground."
+      ],
+      "highRiskDetected": true,
+      "counselorMessage": "It sounds like you've been through a lot very recently, and that feeling of 'suicidal thoughts' yesterday is a serious concern. While your 'Hello' today is a start, it's crucial to acknowledge the persistent struggles. Please know that you don't have to carry this burden alone. It would be incredibly beneficial to reach out to a professional counselor or a helpline. They can offer a safe space, specialized support, and strategies to help you navigate these intense feelings. You deserve to feel safe and supported. Here are some immediate resources if you're in the US: National Suicide Prevention Lifeline at 988, Crisis Text Line by texting HOME to 741741."
+    }
+  },
+  {
+    "_id": "69c35b244ce79c78401f458d",
+    "userId": "jTAGZo6LTAYsBAbwuf7B1v6SduZ2",
+    "feeling": "Hii",
+    "timestamp": "2026-03-25T03:48:52.795Z",
+    "analysis": {
+      "sentiment": "amber",
+      "copingStrategies": [
+        "Take a few slow, deep breaths. Try the 4-7-8 technique: inhale for 4 counts, hold for 7, exhale for 8. Repeat a few times.",
+        "Engage your senses with a grounding exercise: Identify 5 things you can see, 4 things you can touch, 3 things you can hear, 2 things you can smell, and 1 thing you can taste.",
+        "Do a simple activity you enjoy, even for just 10-15 minutes, like listening to music, sketching, or stretching.",
+        "Reach out to a trusted friend or family member for a chat."
+      ],
+      "highRiskDetected": true,
+      "counselorMessage": "It sounds like you've been going through a really tough time, especially with the mention of suicidal thoughts recently. Your well-being is incredibly important. Please consider reaching out to a mental health professional or a crisis helpline immediately. They can offer a safe space and vital support. You don't have to face this alone. In the U.S., you can call or text 988 any time, or visit 988lifeline.org. If you are outside the U.S., please search for your local crisis line or emergency services."
+    }
+  }
+]
