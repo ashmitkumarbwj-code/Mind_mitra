@@ -17,14 +17,21 @@ export const getUserDashboard = async (req, res) => {
         const sevenDaysAgo = daysAgo(7);
 
         // ─── Parallel Queries ─────────────────────────────────
-        const [allRecentCheckIns, alerts, user] = await Promise.all([
+        console.log(`[DASHBOARD] Parallel fetch start for UID: ${uid}`);
+        const [allRecentCheckIns, last30Entries, alerts, user] = await Promise.all([
             CheckIn.find({ userId: uid, createdAt: { $gte: sevenDaysAgo } })
                 .sort({ createdAt: -1 })
                 .select('rawMessage sentimentScore riskLevel intent createdAt')
                 .lean(),
+            CheckIn.find({ userId: uid })
+                .sort({ createdAt: -1 })
+                .limit(30)
+                .select('riskLevel createdAt')
+                .lean(),
             Alert.find({ userId: uid, status: 'OPEN' }).sort({ createdAt: -1 }).limit(5).lean(),
             User.findById(uid).lean()
         ]);
+        console.log(`[DASHBOARD] Parallel fetch COMPLETE. last30: ${last30Entries.length}`);
 
         // ─── Mood Trend: Build 7-day grid ─────────────────────
         const moodTrend = [];
@@ -71,13 +78,23 @@ export const getUserDashboard = async (req, res) => {
             else break;
         }
 
-        // ─── 6. Pattern Detection ──────────────────────────────
+        // ─── 6. Pattern Detection (Advanced) ──────────────────
+        // Check for persistent low mood in last 5 check-ins
+        const last5 = last30Entries.slice(0, 5);
+        const lowMoodCount = last5.filter(c => c.riskLevel === 'Red' || c.riskLevel === 'Amber').length;
         const negativeDays = moodTrend.filter(d => d.score !== null && d.score < -0.5).length;
+        
         let patternAlert = null;
-        if (negativeDays >= 5) {
-            patternAlert = { level: 'RED', message: `You've had ${negativeDays} difficult days this week. You're not alone — talking to someone can help.` };
+        if (lowMoodCount >= 4) {
+             patternAlert = { 
+                 level: 'RED', 
+                 title: 'Persistent Low Mood Detected',
+                 message: "We've noticed you've been feeling down for several days recently. It might be very helpful to speak with a professional counselor to get support during this time."
+             };
+        } else if (negativeDays >= 5) {
+            patternAlert = { level: 'RED', title: 'Difficult Week Detected', message: `You've had ${negativeDays} difficult days this week. You're not alone — talking to someone can help.` };
         } else if (negativeDays >= 3) {
-            patternAlert = { level: 'AMBER', message: `We've noticed ${negativeDays} challenging days recently. Remember to be kind to yourself.` };
+            patternAlert = { level: 'AMBER', title: 'Challenging Trend', message: `We've noticed ${negativeDays} challenging days recently. Remember to be kind to yourself.` };
         }
 
         // ─── 7. Recent Entries ─────────────────────────────────
@@ -112,7 +129,11 @@ export const getUserDashboard = async (req, res) => {
                 topIntent,
                 burnoutScore,
                 activitiesCompleted: checkinCount,
-                trends: moodTrend.map(d => ({ date: d.date, score: d.score })),
+                riskTrend: last30Entries.map(c => ({
+                    date: c.createdAt,
+                    level: c.riskLevel === 'Green' ? 2 : c.riskLevel === 'Amber' ? 1 : 0,
+                    risk: c.riskLevel
+                })).reverse(),
                 alerts,
                 user
             }

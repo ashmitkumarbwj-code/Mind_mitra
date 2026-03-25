@@ -1,4 +1,4 @@
-// Force IPv4 DNS resolution — fixes ETIMEDOUT on networks that block IPv6 (e.g. local dev)
+
 import dns from 'node:dns';
 dns.setDefaultResultOrder('ipv4first');
 
@@ -19,7 +19,10 @@ export const connectDB = async () => {
             console.error('[DB] MONGODB_URI not set in .env. Skipping database connection.');
             return;
         }
-        await mongoose.connect(uri);
+        console.log('[DB] Connecting to MongoDB Atlas...');
+        await mongoose.connect(uri, {
+            serverSelectionTimeoutMS: 5000, // 5 seconds timeout
+        });
         console.log('[DB] Connected to MongoDB Atlas ✅');
     } catch (err) {
         console.error('[DB] MongoDB connection failed:', err.message);

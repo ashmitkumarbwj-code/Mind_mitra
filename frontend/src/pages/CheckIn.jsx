@@ -9,8 +9,6 @@ import { Camera, CameraOff, Sparkles } from 'lucide-react';
 export default function CheckIn() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-
-  const [checkedInToday, setCheckedInToday] = useState(false);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,32 +39,11 @@ export default function CheckIn() {
 
   // Load History & Initialize Speech Recognition
   useEffect(() => {
-    // 1. Initialize Greeting & History
     const loadHistory = async () => {
       try {
         const uid = currentUser?.uid || `anon-${Date.now()}`;
         const res = await axios.get(`${API_BASE}/api/v1/checkin/history?userId=${uid}&_t=${Date.now()}`);
         const history = res.data.data.reverse(); // oldest first
-
-        // ── Check if already checked in today ──────────────────
-        if (history.length > 0) {
-          const lastCheckin = new Date(history[history.length - 1].createdAt || history[history.length - 1].created_at);
-          const today = new Date();
-          const isToday = lastCheckin.getFullYear() === today.getFullYear()
-            && lastCheckin.getMonth() === today.getMonth()
-            && lastCheckin.getDate() === today.getDate();
-          if (isToday) {
-            setCheckedInToday(true);
-            localStorage.setItem(todayKey(), 'true');
-            return;
-          }
-        }
-
-        // Check localStorage fallback (works even without MongoDB)
-        if (localStorage.getItem(todayKey()) === 'true') {
-          setCheckedInToday(true);
-          return;
-        }
 
         const greeting = currentUser?.isAnonymous
           ? 'Hey there! 💙 How are you feeling today?'
@@ -75,11 +52,6 @@ export default function CheckIn() {
         setMessages([{ id: 'init', sender: 'bot', text: greeting }]);
       } catch (err) {
         console.error('Failed to load history', err);
-        // Check localStorage fallback
-        if (localStorage.getItem(todayKey()) === 'true') {
-          setCheckedInToday(true);
-          return;
-        }
         setMessages([{ id: 'init', sender: 'bot', text: "Hey! 💙 How are you feeling today?" }]);
       }
     };
@@ -203,10 +175,15 @@ export default function CheckIn() {
     if (loading) return; 
     if (!text.trim()) return;
 
-    const userMsg = { id: Date.now().toString(), sender: 'user', text: text.trim() };
+    // Add user msg and an empty bot bubble placeholder instantly
+    const userMsg = { 
+      id: Date.now().toString(), 
+      sender: 'user', 
+      text: text.trim(),
+      visualEmotion: showWebcam ? currentEmotion : null 
+    };
     const botMsgId = Date.now().toString() + 'bot';
     
-    // Add user msg and an empty bot bubble placeholder instantly
     setMessages(prev => [...prev, userMsg, { 
       id: botMsgId, sender: 'bot', text: '', riskLevel: null, intent: null 
     }]);
@@ -264,20 +241,17 @@ export default function CheckIn() {
             if (parsed.text) {
                 setMessages(prev => prev.map(m => m.id === botMsgId ? { ...m, text: m.text + parsed.text } : m));
             }
-            if (parsed.done) {
-                setMessages(prev => prev.map(m => m.id === botMsgId ? {
-                    ...m, 
-                    riskLevel: parsed.riskLevel,
-                    intent: parsed.intent,
-                    copingStrategy: parsed.copingStrategy,
-                    empathyEcho: parsed.empathyEcho
-                } : m));
-                // 🗓️ Mark today's check-in as complete
-                localStorage.setItem(todayKey(), 'true');
-                setCheckedInToday(true);
-                // 🔄 Signal dashboard to refresh with latest data
-                window.dispatchEvent(new CustomEvent('checkin-complete'));
-            }
+                if (parsed.done) {
+                    setMessages(prev => prev.map(m => m.id === botMsgId ? {
+                        ...m, 
+                        riskLevel: parsed.riskLevel,
+                        intent: parsed.intent,
+                        copingStrategy: parsed.copingStrategy,
+                        empathyEcho: parsed.empathyEcho
+                    } : m));
+                    // 🔄 Signal dashboard to refresh with latest data point
+                    window.dispatchEvent(new CustomEvent('checkin-complete'));
+                }
           } catch(e) {}
         }
         streamBuffer = newlines[newlines.length - 1]; 
@@ -306,31 +280,6 @@ export default function CheckIn() {
       console.error('Failed to log coping action', err);
     }
   };
-
-  // ── Already Checked In Today Screen ────────────────────────────
-  if (checkedInToday) {
-    const name = currentUser?.isAnonymous ? 'there' : currentUser?.displayName?.split(' ')[0] || 'there';
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '24px', padding: '40px 20px', textAlign: 'center' }}>
-        <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(52,211,153,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(52,211,153,0.3)' }}>
-          <CheckCircle2 size={40} color="#34d399" />
-        </div>
-        <div>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '1.8rem' }}>You're all done for today, {name}! 🌟</h2>
-          <p style={{ color: '#64748b', margin: 0, maxWidth: '400px', lineHeight: '1.6' }}>
-            You've already completed your daily check-in. Taking care of your mental health every day is a powerful habit. See you tomorrow!
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          <button className="button-primary" onClick={() => navigate('/dashboard')}>📊 View My Dashboard</button>
-          <button className="button-secondary" onClick={() => setCheckedInToday(false)} style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#94a3b8', cursor: 'pointer' }}>
-            💬 Talk Anyway
-          </button>
-        </div>
-        <p style={{ color: '#334155', fontSize: '0.8rem' }}>Next check-in available tomorrow morning</p>
-      </div>
-    );
-  }
 
   return (
     <div style={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', maxWidth: '800px', margin: '0 auto', padding: '20px 10px' }}>
@@ -377,6 +326,24 @@ export default function CheckIn() {
           return (
             <div key={msg.id} className={`chat-bubble ${isBot ? 'bot' : 'user'}`} style={isRed ? { borderLeft: '4px solid #f87171' } : {}}>
               <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+              
+              {/* User Visual Reaction Badge */}
+              {!isBot && msg.visualEmotion && (
+                <div style={{ 
+                  marginTop: '10px', 
+                  fontSize: '0.75rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px',
+                  background: 'rgba(255,255,255,0.1)',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  width: 'fit-content'
+                }}>
+                  <Sparkles size={12} color="#a5b4fc" />
+                  Visual Mood: <span style={{ fontWeight: 700, textTransform: 'capitalize' }}>{msg.visualEmotion}</span>
+                </div>
+              )}
 
               {/* Dynamic Risk Indicators for Bot Messages */}
               {isBot && msg.riskLevel && (

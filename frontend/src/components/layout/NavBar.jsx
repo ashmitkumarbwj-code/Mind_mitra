@@ -45,8 +45,8 @@ export default function NavBar() {
       {/* Nav Links */}
       <div style={{ display: 'flex', gap: '4px' }}>
         {[
-          { path: '/checkin', label: 'Check-In', icon: <ClipboardEdit size={16} /> },
-          { path: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
+          { path: '/checkin', label: 'Chat', icon: <ClipboardEdit size={16} /> },
+          { path: '/analytics', label: 'Analytics', icon: <LayoutDashboard size={16} /> },
           { path: '/admin', label: 'Counselor', icon: <ShieldAlert size={16} color="#f87171" /> },
           { path: '/settings', label: 'Settings', icon: <SettingsIcon size={16} /> },
         ].map(({ path, label, icon }) => (

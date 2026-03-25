@@ -70,7 +70,7 @@ export const submitCheckIn = async (req, res) => {
         })}\n\n`);
         res.end();
 
-        // 4. DB Storage (Fire and Forget - Non-Blocking)
+        // 4. DB Storage (Wait for save to ensure data integrity)
         try {
             const checkinRecord = {
                 user_id: safeUserId,
@@ -80,17 +80,22 @@ export const submitCheckIn = async (req, res) => {
                 sentiment_score: fallbackSentiment,
                 intent: fallbackIntent,
                 risk_level: riskLevelUI,
-                ai_response: finalReply
+                ai_response: finalReply,
+                visual_emotion: visualEmotion || null
             };
+
+            console.log(`[CHECKIN] Saving data for ${safeUserId}:`, riskLevelUI);
+            
+            const saved = await saveCheckIn(checkinRecord);
+            console.log(`[CHECKIN] Successfully saved to DB: ${saved._id}`);
+
             if (riskLevelUI === 'Red') {
-                saveAlert(safeUserId, 'RISK_RED', `High-risk detected for user: ${text}`).catch(err => {
-                    console.error('Failed to log crisis alert:', err);
-                });
+                await saveAlert(safeUserId, 'RISK_RED', `High-risk detected for user: ${text}`);
+                console.log(`[ALERT] High-risk alert logged for ${safeUserId}`);
             }
-            saveCheckIn(checkinRecord).catch(dbError => {
-                console.warn('Non-fatal: Database pool full. Chatbot history not saved securely.');
-            });
-        } catch (dbError) {}
+        } catch (dbError) {
+            console.error('[CHECKIN] Database save FAILED:', dbError.message);
+        }
 
     } catch (error) {
         console.error('Critical Error in submitCheckIn:', error);

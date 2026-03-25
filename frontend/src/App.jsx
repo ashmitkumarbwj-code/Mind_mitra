@@ -4,7 +4,7 @@ import './index.css';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import CheckIn from './pages/CheckIn';
-import Dashboard from './pages/Dashboard';
+import Analytics from './pages/Analytics';
 import Onboarding from './pages/Onboarding';
 import Settings from './pages/Settings';
 import AdminDashboard from './pages/AdminDashboard';
@@ -25,7 +25,7 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={<Onboarding />} />
           <Route path="/checkin" element={<PrivateRoute><CheckIn /></PrivateRoute>} />
-          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
           <Route path="/admin" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />

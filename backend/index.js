@@ -16,6 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/v1/checkin', checkinRoutes);
+app.use('/api/checkin', checkinRoutes); // Direct mapping for user's Dashboard.jsx
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/admin', adminRoutes);
 
