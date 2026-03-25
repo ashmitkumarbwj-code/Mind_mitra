@@ -1,6 +1,6 @@
 import { generateDeepChatStream } from '../services/aiService.js';
 import { evaluateRisk, getCopingStrategy } from '../services/riskEngine.js';
-import { saveCheckIn, getRecentCheckIns, upsertUser, updateEmergencyContact, saveCopingLog, saveAlert } from '../services/dbService.js';
+import { saveCheckIn, getRecentCheckIns, upsertUser, updateEmergencyContact, saveCopingLog, saveAlert, getUserById } from '../services/dbService.js';
 
 export const logCopingAction = async (req, res) => {
     try {
@@ -59,11 +59,18 @@ export const submitCheckIn = async (req, res) => {
             contextualContext = `\n[CONTEXT] User's last check-in was at ${lastCheckIn.createdAt}. They were feeling ${lastCheckIn.riskLevel}. 
             If they are doing better now, celebrate. If worse, be extra supportive.`;
         }
+        
+        // 🔥 CRISIS PROTOCOL: Fetch Emergency Contact
+        const userDoc = await getUserById(safeUserId);
+        const emergencyInfo = userDoc?.emergencyContactName 
+            ? `[EMERGENCY CONTACT] Name: ${userDoc.emergencyContactName}, Phone: ${userDoc.emergencyContactPhone}. 
+               If you detect a crisis (Risk RED), you MUST provide this specific contact detail to the user and urge them to call.`
+            : "";
 
         // 🔥 STEP 2.2 — Stream AI chunks & STEP 2.3 — Build fullResponse string
         console.log(`[SSE] Initiating AI processing for ${safeUserId}...`);
         const streamTarget = isStreaming ? res : null;
-        const aiPayload = await generateDeepChatStream(checkinText + contextualContext, streamTarget, chatHistory || [], visualEmotion);
+        const aiPayload = await generateDeepChatStream(checkinText + contextualContext + emergencyInfo, streamTarget, chatHistory || [], visualEmotion);
         
         // 🔥 STEP 2.4 — Capture metadata (intent, riskLevel, sentiment)
         const riskLevelUI = aiPayload.riskLevel; 

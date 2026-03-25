@@ -43,9 +43,9 @@ export default function Settings() {
       {/* Header */}
       <div className="animate-slide-up" style={{ marginBottom: '40px' }}>
         <h1 className="text-gradient" style={{ fontSize: '2.5rem', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <SettingsIcon size={32} color="#818cf8" /> Account Settings
+          <SettingsIcon size={32} color="#818cf8" /> Emergency Contacts
         </h1>
-        <p style={{ color: '#94a3b8', fontSize: '1.1rem' }}>Customize your experience and manage security preferences.</p>
+        <p style={{ color: '#94a3b8', fontSize: '1.1rem' }}>Manage your high-priority contacts for crisis support.</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
@@ -70,7 +70,7 @@ export default function Settings() {
         {/* Emergency Contact Form */}
         <div className="glass-card-trendy animate-slide-up" style={{ gridColumn: 'span 7', padding: '40px' }}>
           <h3 style={{ margin: '0 0 30px 0', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Shield size={20} color="#34d399" /> Safety Net
+            <Shield size={20} color="#34d399" /> Protocol Contacts
           </h3>
           <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
