@@ -68,19 +68,6 @@ body::after {
   width: 100%;
   position: relative;
   z-index: 1;
-  /* 🔥 MINDBLOWING: Bubbly pattern only at mouse position */
-  background-image: radial-gradient(circle at center, rgba(139, 92, 246, 0.2) 2px, transparent 8px);
-  background-size: 32px 32px;
-  -webkit-mask-image: radial-gradient(
-    400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    black 0%,
-    transparent 85%
-  );
-  mask-image: radial-gradient(
-    400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    black 0%,
-    transparent 85%
-  );
 }
 
 @keyframes breatheAuroras {
