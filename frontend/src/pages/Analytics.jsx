@@ -40,14 +40,12 @@ export default function Analytics() {
   const [graphData, setGraphData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔥 STEP 5 — FIX FRONTEND DATA FETCH
   const fetchData = async (isBackground = false) => {
     if (!currentUser) return;
     if (!isBackground) setLoading(true);
     try {
       console.log(`[ANALYTICS] Fetching data for UID: ${currentUser.uid}`);
       
-      // Call both APIs: stats for dashboard and history for the graph
       const [statsRes, historyRes] = await Promise.all([
         axios.get(`${API_BASE}/api/v1/dashboard/user?userId=${currentUser.uid}&_t=${Date.now()}`),
         axios.get(`${API_BASE}/api/v1/checkin/history?userId=${currentUser.uid}&_t=${Date.now()}`)
@@ -56,18 +54,12 @@ export default function Analytics() {
       const dashboardData = statsRes.data.data;
       const historyData = historyRes.data.data || [];
       
-      console.log('[ANALYTICS] History data fetched:', historyData);
-
-      // 🔥 STEP 5 & 6 — Map data: date and sentiment_score
       const formattedTrend = historyData.map(item => ({
-        date: new Date(item.createdAt).toLocaleDateString(),
+        date: new Date(item.createdAt).toISOString(),
         sentiment: item.sentimentScore || 0,
         risk: item.riskLevel || 'Unknown'
-      })).reverse(); // Reverse to show chronological order
+      })).reverse();
 
-      console.log("🔥 STEP 6 — GRAPH DATA (Mapped):", formattedTrend);
-
-      // 🔥 STEP 8 — Ensure NEW array update
       setGraphData([...formattedTrend]);
       setData(dashboardData);
       
@@ -81,7 +73,6 @@ export default function Analytics() {
   useEffect(() => {
     fetchData();
     
-    // 🔥 STEP 7 — FIX REAL-TIME UPDATE
     const handler = () => {
         console.log("[ANALYTICS] checkin-complete received. Refreshing graph...");
         fetchData(true);
@@ -104,7 +95,14 @@ export default function Analytics() {
     </div>
   );
 
-  if (!data) return null;
+  if (!data) return (
+     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
+        <MessageSquare size={48} color="#475569" style={{ marginBottom: '16px' }} />
+        <h2 style={{ color: '#f8fafc', marginBottom: '8px' }}>No Data Yet</h2>
+        <p style={{ color: '#94a3b8', maxWidth: '400px' }}>Start a conversation with MindMitra to see your emotional trends and insights here.</p>
+        <button onClick={() => navigate('/checkin')} style={{ marginTop: '24px', background: '#818cf8', color: 'white', padding: '10px 24px', borderRadius: '12px', border: 'none', cursor: 'pointer' }}>Start Chatting</button>
+     </div>
+  );
 
   const riskColor = RISK_COLORS[data.currentRisk] || '#34d399';
   const RiskIcon = data.currentRisk === 'Red' ? Frown : data.currentRisk === 'Amber' ? Meh : Smile;
@@ -112,10 +110,7 @@ export default function Analytics() {
   return (
     <div style={{ minHeight: '100vh', padding: '40px 20px', maxWidth: '1100px', margin: '0 auto' }}>
 
-      {/* ── Stats Row ───────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-        
-        {/* Dominant Emotion Card */}
         <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{ background: `${riskColor}15`, padding: '16px', borderRadius: '18px', border: `1px solid ${riskColor}33` }}>
             <RiskIcon size={32} color={riskColor} />
@@ -126,13 +121,11 @@ export default function Analytics() {
           </div>
         </div>
 
-        {/* Check-in Count Card */}
         <div className="glass-panel" style={{ padding: '24px' }}>
           <p style={{ margin: 0, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Total Check-Ins</p>
           <h2 style={{ margin: '4px 0 0 0', fontSize: '2rem', color: '#f8fafc' }}>{data.checkinCount}</h2>
         </div>
 
-        {/* Streak/Activity Card */}
         <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div>
               <p style={{ margin: 0, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700 }}>Consistency Score</p>
@@ -142,7 +135,6 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* ── Pattern Alert (High Contrast) ────────────── */}
       {data.patternAlert && (
         <div className="animate-slide-up" style={{
           background: data.patternAlert.level === 'RED' ? 'rgba(239,68,68,0.06)' : 'rgba(251,191,36,0.06)',
@@ -161,102 +153,98 @@ export default function Analytics() {
         </div>
       )}
 
-      {/* ── Mood Trend Graph (Discrete) ────────────── */}
       <div className="glass-panel animate-dashboard-refresh" key={graphData.length} style={{ padding: '32px', marginBottom: '24px' }}>
         <h2 style={{ margin: '0 0 32px 0', fontSize: '1.2rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <TrendingUp size={20} color="#818cf8" className="animate-pulse" /> {`Mood Trend (Last ${graphData.length} Entries)`}
         </h2>
         <div style={{ height: '300px', width: '100%' }}>
-          {console.log("🔥 STEP 6 — GRAPH RENDER DATA:", graphData)}
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={graphData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-              <XAxis 
-                dataKey="date" 
-                tickFormatter={(str) => {
-                  const d = new Date(str);
-                  return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
-                }}
-                tick={{ fill: '#64748b', fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis 
-                domain={[-1, 1]} 
-                ticks={[-1, 0, 1]} 
-                tickFormatter={(val) => val === 1 ? 'Positive' : val === 0 ? 'Neutral' : 'Negative'}
-                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500 }}
-                width={80}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Line 
-                type="monotone" 
-                dataKey="sentiment" 
-                stroke="#6366f1" 
-                strokeWidth={4}
-                dot={(props) => {
-                   const risk = props.payload.risk;
-                   return (
-                     <circle 
-                       cx={props.cx} 
-                       cy={props.cy} 
-                       r={6} 
-                       fill={RISK_COLORS[risk]} 
-                       stroke="rgba(255,255,255,0.2)" 
-                       strokeWidth={2} 
-                     />
-                   );
-                }}
-                activeDot={{ r: 8, strokeWidth: 0 }}
-                animationDuration={1500}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {graphData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={graphData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                <XAxis 
+                  dataKey="date" 
+                  tickFormatter={(str) => {
+                    const d = new Date(str);
+                    return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+                  }}
+                  tick={{ fill: '#64748b', fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  domain={[-1, 1]} 
+                  ticks={[-1, 0, 1]} 
+                  tickFormatter={(val) => val === 1 ? 'Positive' : val === 0 ? 'Neutral' : 'Negative'}
+                  tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500 }}
+                  width={80}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Line 
+                  type="monotone" 
+                  dataKey="sentiment" 
+                  stroke="#6366f1" 
+                  strokeWidth={4}
+                  dot={(props) => {
+                     const risk = props.payload.risk;
+                     return (
+                       <circle 
+                         cx={props.cx} 
+                         cy={props.cy} 
+                         r={6} 
+                         fill={RISK_COLORS[risk]} 
+                         stroke="rgba(255,255,255,0.2)" 
+                         strokeWidth={2} 
+                       />
+                     );
+                  }}
+                  activeDot={{ r: 8, strokeWidth: 0 }}
+                  animationDuration={1500}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569' }}>
+               Trend will appear after your 2nd check-in.
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── Secondary Analysis Grid ─────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-        
-        {/* Emotion Mix */}
         <div className="glass-panel" style={{ padding: '28px' }}>
           <h3 style={{ margin: '0 0 24px 0', fontSize: '1.1rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <MessageSquare size={18} color="#f472b6" /> Weekly Emotion Mix
           </h3>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={data.emotionStats} cx="50%" cy="50%" innerRadius={60} outerRadius={85}
+              <Pie data={data.emotionStats || []} cx="50%" cy="50%" innerRadius={60} outerRadius={85}
                 paddingAngle={5} dataKey="value" nameKey="name">
-                {data.emotionStats.map((_, i) => <Cell key={i} fill={EMOTION_COLORS[i % EMOTION_COLORS.length]} />)}
+                {(data.emotionStats || []).map((_, i) => <Cell key={i} fill={EMOTION_COLORS[i % EMOTION_COLORS.length]} />)}
               </Pie>
               <Tooltip />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Activity Summary */}
         <div className="glass-panel" style={{ padding: '28px' }}>
           <h3 style={{ margin: '0 0 24px 0', fontSize: '1.1rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Activity size={18} color="#34d399" /> Intervention Summary
+            <Activity size={18} color="#34d399" /> Intent Distribution
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {[
-              { label: 'Coping Strategies Logged', value: `${data.burnoutScore}% Engagement`, color: '#818cf8' },
-              { label: 'Self-Harm Filters Tripped', value: data.alerts?.length || 0, color: '#f87171' },
-              { label: 'Proactive Outreach', value: data.patternAlert ? '1 Pending' : '0 Required', color: '#fbbf24' }
-            ].map((stat, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', pb: '12px' }}>
-                <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>{stat.label}</span>
-                <span style={{ color: stat.color, fontWeight: 700 }}>{stat.value}</span>
-              </div>
-            ))}
-          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={data.emotionStats || []}>
+              <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis hide />
+              <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }} />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                {(data.emotionStats || []).map((_, i) => <Cell key={i} fill={EMOTION_COLORS[i % EMOTION_COLORS.length]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-
       </div>
-
     </div>
   );
 }
