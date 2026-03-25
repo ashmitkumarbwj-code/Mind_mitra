@@ -51,8 +51,11 @@ export const submitCheckIn = async (req, res) => {
 
         const safeUserId = userId || `user-${Date.now()}`;
 
-        // 🔥 MINDBLOWING: Contextual Empathy (Reference last sentiment)
-        const history = await getRecentCheckIns(safeUserId);
+        const [history, userDoc] = await Promise.all([
+            getRecentCheckIns(safeUserId),
+            getUserById(safeUserId)
+        ]);
+
         const lastCheckIn = history[0];
         let contextualContext = "";
         if (lastCheckIn) {
@@ -61,9 +64,8 @@ export const submitCheckIn = async (req, res) => {
         }
         
         // 🔥 CRISIS PROTOCOL: Fetch Emergency Contact
-        const userDoc = await getUserById(safeUserId);
         const emergencyInfo = userDoc?.emergencyContactName 
-            ? `[EMERGENCY CONTACT] Name: ${userDoc.emergencyContactName}, Phone: ${userDoc.emergencyContactPhone}. 
+            ? `\n[EMERGENCY CONTACT] Name: ${userDoc.emergencyContactName}, Phone: ${userDoc.emergencyContactPhone}. 
                If you detect a crisis (Risk RED), you MUST provide this specific contact detail to the user and urge them to call.`
             : "";
 
