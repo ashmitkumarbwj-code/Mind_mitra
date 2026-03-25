@@ -101,14 +101,15 @@ export const getInactiveUsers = async (hoursInactive) => {
 export const saveCheckIn = async (data) => {
     try {
         const doc = await CheckIn.create({
-            userId: data.user_id,
-            rawMessage: data.raw_message,
-            journalWentWell: data.journal_went_well,
-            journalDrained: data.journal_drained,
-            sentimentScore: data.sentiment_score,
+            userId: data.userId,
+            rawMessage: data.rawMessage,
+            journalWentWell: data.journalWentWell,
+            journalDrained: data.journalDrained,
+            sentimentScore: data.sentimentScore,
             intent: data.intent,
-            riskLevel: data.risk_level,
-            aiResponse: data.ai_response,
+            riskLevel: data.riskLevel,
+            aiResponse: data.aiResponse,
+            visualEmotion: data.visualEmotion,
         });
         return doc.toObject();
     } catch (err) {

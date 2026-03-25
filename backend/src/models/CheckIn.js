@@ -9,6 +9,7 @@ const CheckInSchema = new mongoose.Schema({
     intent: { type: String, default: 'general' },
     riskLevel: { type: String, enum: ['Green', 'Amber', 'Red'], default: 'Green' },
     aiResponse: { type: String, default: null },
+    visualEmotion: { type: String, default: null },
 }, { timestamps: true });
 
 export default mongoose.model('CheckIn', CheckInSchema);

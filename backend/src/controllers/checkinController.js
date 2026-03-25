@@ -37,7 +37,9 @@ export const submitCheckIn = async (req, res) => {
             return res.status(400).json({ error: 'Check-in text is required' });
         }
 
-        // Setup SSE Headers for Real-Time Streaming
+        console.log(`[CHECKIN] Received request for UID: ${userId || 'anon'}`);
+
+        // 1. Setup SSE Headers for Real-Time Streaming
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
@@ -46,21 +48,22 @@ export const submitCheckIn = async (req, res) => {
         const safeUserId = userId || `anon-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
         if (safeUserId) {
-            upsertUser({ uid: safeUserId, email: email || null, isAnonymous: isAnonymous || false }).catch(()=>{});
+            upsertUser({ uid: safeUserId, email: email || null, isAnonymous: isAnonymous || false }).catch(err => {
+                console.warn('[CHECKIN] User upsert failed:', err.message);
+            });
         }
 
-        // Pass chatHistory (all previous messages) for conversational memory + webcam emotion
+        // 2. Stream AI Response from Gemini
+        console.log(`[CHECKIN] Initiating Gemini stream for ${safeUserId}...`);
         const aiPayload = await generateDeepChatStream(text, res, chatHistory || [], visualEmotion);
         
-        const riskLevelUI = aiPayload.riskLevel; // "Green", "Amber", "Red"
+        const riskLevelUI = aiPayload.riskLevel; 
         const finalReply = aiPayload.reply;
         const fallbackIntent = aiPayload.intent;
-
-        // 2. Use Gemini Sentiment if available, else zero
         const geminiSentiment = aiPayload.sentimentScore !== undefined ? aiPayload.sentimentScore : 0;
         const copingStrategy = getCopingStrategy(fallbackIntent);
 
-        // 3. Finalize Stream with UI Action Metadata
+        // 3. Send Final Metadata via SSE
         res.write(`data: ${JSON.stringify({
             done: true,
             riskLevel: riskLevelUI,
@@ -68,39 +71,45 @@ export const submitCheckIn = async (req, res) => {
             copingStrategy,
             empathyEcho: aiPayload.empathyEcho
         })}\n\n`);
-        res.end();
 
-        // 4. DB Storage (Wait for save to ensure data integrity)
+        console.log(`[CHECKIN] Stream finished. Intent: ${fallbackIntent}, Risk: ${riskLevelUI}`);
+
+        // 4. DB Storage: Ensure save finishes before ending the request lifecycle
         try {
             const checkinRecord = {
-                user_id: safeUserId,
-                raw_message: text,
-                journal_went_well: microJournaling?.wentWell || null,
-                journal_drained: microJournaling?.drained || null,
-                sentiment_score: geminiSentiment,
+                userId: safeUserId,
+                rawMessage: text,
+                journalWentWell: microJournaling?.wentWell || null,
+                journalDrained: microJournaling?.drained || null,
+                sentimentScore: geminiSentiment,
                 intent: fallbackIntent,
-                risk_level: riskLevelUI,
-                ai_response: finalReply,
-                visual_emotion: visualEmotion || null
+                riskLevel: riskLevelUI,
+                aiResponse: finalReply,
+                visualEmotion: visualEmotion || null
             };
 
-            console.log(`[CHECKIN] Saving data for ${safeUserId}:`, riskLevelUI);
-            
+            console.log(`[CHECKIN] Saving to MongoDB...`);
             const saved = await saveCheckIn(checkinRecord);
-            console.log(`[CHECKIN] Successfully saved to DB: ${saved._id}`);
+            console.log(`[CHECKIN] SUCCESS: Saved record ${saved._id}`);
 
             if (riskLevelUI === 'Red') {
                 await saveAlert(safeUserId, 'RISK_RED', `High-risk detected for user: ${text}`);
-                console.log(`[ALERT] High-risk alert logged for ${safeUserId}`);
+                console.log(`[ALERT] HIGH RISK alert logged for ${safeUserId}`);
             }
         } catch (dbError) {
-            console.error('[CHECKIN] Database save FAILED:', dbError.message);
+            console.error('[CHECKIN] DATABASE SAVE FAILED:', dbError.message);
+            // Optionally send an error chunk if the stream is still open, 
+            // but here we already sent 'done: true' and the client might have closed.
         }
 
+        // 5. Finalize the SSE connection
+        res.end();
+        console.log(`[CHECKIN] Request lifecycle completed for ${safeUserId}`);
+
     } catch (error) {
-        console.error('Critical Error in submitCheckIn:', error);
-        res.write(`data: ${JSON.stringify({ text: "I'm experiencing a high volume of traffic right now and my connection is a bit slow. Please wait a moment and try again." })}\n\n`);
-        res.write(`data: ${JSON.stringify({ done: true, riskLevel: "Amber", intent: "stress", copingStrategy: "Take a deep breath. Close your eyes for 30 seconds." })}\n\n`);
+        console.error('[CHECKIN] CRITICAL ERROR:', error);
+        res.write(`data: ${JSON.stringify({ text: "I'm having trouble processing your check-in. Please try again in a moment." })}\n\n`);
+        res.write(`data: ${JSON.stringify({ done: true, riskLevel: "Amber", intent: "stress" })}\n\n`);
         res.end();
     }
 };
