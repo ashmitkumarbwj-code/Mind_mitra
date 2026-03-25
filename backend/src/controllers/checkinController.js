@@ -74,6 +74,18 @@ export const submitCheckIn = async (req, res) => {
 
         console.log(`[SSE] AI Sequence Complete. Risk: ${riskLevelUI}, Sentiment: ${geminiSentiment}`);
 
+        // 🔥 STEP 2.4.1 — Upsert User record
+        try {
+            await upsertUser({
+                uid: safeUserId,
+                email: email || null,
+                isAnonymous: isAnonymous || false
+            });
+            console.log(`[SSE] User record upserted for ${safeUserId}`);
+        } catch (uErr) {
+            console.error('[SSE] USER UPSERT ERROR:', uErr.message);
+        }
+
         // 🔥 STEP 2.5 — AFTER stream ends: Save to DB
         console.log(`[SSE] Persisting to MongoDB...`);
         let savedDocId = null;

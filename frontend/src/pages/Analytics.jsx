@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   TrendingUp, AlertCircle, ShieldAlert, HeartPulse, 
   Flame, CalendarCheck, MessageSquare, Activity,
-  Smile, Meh, Frown
+  Smile, Meh, Frown, RefreshCw, WifiOff
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -39,10 +39,14 @@ export default function Analytics() {
   const [data, setData] = useState(null);
   const [graphData, setGraphData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchData = async (isBackground = false) => {
     if (!currentUser) return;
-    if (!isBackground) setLoading(true);
+    if (!isBackground) {
+        setLoading(true);
+        setError(null);
+    }
     try {
       console.log(`[ANALYTICS] Fetching data for UID: ${currentUser.uid}`);
       
@@ -65,6 +69,7 @@ export default function Analytics() {
       
     } catch (err) {
       console.error('[ANALYTICS] Fetch error:', err);
+      if (!isBackground) setError("Unable to connect to your health center. Please check your internet or retry.");
     } finally {
       setLoading(false);
     }
@@ -95,7 +100,18 @@ export default function Analytics() {
     </div>
   );
 
-  if (!data) return (
+  if (error) return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
+        <WifiOff size={48} color="#f87171" style={{ marginBottom: '16px' }} />
+        <h2 style={{ color: '#f87171', marginBottom: '8px' }}>Connection Issue</h2>
+        <p style={{ color: '#94a3b8', maxWidth: '400px' }}>{error}</p>
+        <button onClick={() => fetchData()} style={{ marginTop: '24px', background: 'rgba(248, 113, 113, 0.1)', color: '#f87171', border: '1px solid #f8717133', padding: '10px 24px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <RefreshCw size={16} /> Retry Sync
+        </button>
+     </div>
+  );
+
+  if (!data || data.checkinCount === 0) return (
      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
         <MessageSquare size={48} color="#475569" style={{ marginBottom: '16px' }} />
         <h2 style={{ color: '#f8fafc', marginBottom: '8px' }}>No Data Yet</h2>
