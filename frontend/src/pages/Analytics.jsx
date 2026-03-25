@@ -56,9 +56,17 @@ export default function Analytics() {
 
   useEffect(() => {
     fetchDashboard(false);
-    const onCheckinComplete = () => fetchDashboard(true);
-    window.addEventListener('checkin-complete', onCheckinComplete);
-    return () => window.removeEventListener('checkin-complete', onCheckinComplete);
+    
+    const syncChannel = new BroadcastChannel('mindmitra_sync');
+    const onRefresh = () => fetchDashboard(true);
+    
+    syncChannel.onmessage = onRefresh;
+    window.addEventListener('checkin-complete', onRefresh);
+    
+    return () => {
+      syncChannel.close();
+      window.removeEventListener('checkin-complete', onRefresh);
+    };
   }, [currentUser]);
 
   if (loading) return (
@@ -136,7 +144,13 @@ export default function Analytics() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
               <XAxis 
                 dataKey="date" 
-                hide={true} 
+                tickFormatter={(str) => {
+                  const d = new Date(str);
+                  return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+                }}
+                tick={{ fill: '#64748b', fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
               />
               <YAxis 
                 domain={[0, 2]} 

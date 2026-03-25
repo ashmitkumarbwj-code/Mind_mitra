@@ -249,7 +249,9 @@ export default function CheckIn() {
                         copingStrategy: parsed.copingStrategy,
                         empathyEcho: parsed.empathyEcho
                     } : m));
-                    // 🔄 Signal dashboard to refresh with latest data point
+                    // 🔄 Signal dashboard to refresh (including other tabs)
+                    const syncChannel = new BroadcastChannel('mindmitra_sync');
+                    syncChannel.postMessage('refresh_dashboard');
                     window.dispatchEvent(new CustomEvent('checkin-complete'));
                 }
           } catch(e) {}
