@@ -94,7 +94,6 @@ export default function CheckIn() {
           faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
         ]);
         setModelsLoaded(true);
-        console.log('Face models loaded 🚀');
       } catch (err) {
         console.error('Face model load failed', err);
       }
